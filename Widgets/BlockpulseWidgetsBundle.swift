@@ -9,5 +9,7 @@ struct BlockpulseWidgetsBundle: WidgetBundle {
         FeesWidget()
         DashboardWidget()
         LockScreenWidget()
+        LockFeeWidget()
+        LockHeightWidget()
     }
 }

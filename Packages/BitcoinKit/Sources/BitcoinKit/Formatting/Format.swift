@@ -60,11 +60,12 @@ public enum Format {
     /// "38.5 vMB"
     public static func vMB(_ vsize: Int) -> String { String(format: "%.1f", Double(vsize) / 1_000_000) + " vMB" }
 
-    /// Lock Screen inline: "₿ €73,984 · #971,150 · 2 sat/vB", omitting missing parts.
+    /// Lock Screen inline: "₿ €73,984 · 2 sat/vB". The line shares its row with the date, so it holds
+    /// two values at most: the block height only stands in when there is no price.
     public static func inline(_ snapshot: BitcoinSnapshot, _ currency: Currency) -> String {
         var parts: [String] = []
         if let p = snapshot.price { parts.append(price(p.price(in: currency), currency)) }
-        if let h = snapshot.tipHeight { parts.append(blockHeight(h)) }
+        else if let h = snapshot.tipHeight { parts.append(blockHeight(h)) }
         if let f = snapshot.fees { parts.append(feeRate(f.fastestFee)) }
         return parts.isEmpty ? "₿ —" : "₿ " + parts.joined(separator: " · ")
     }

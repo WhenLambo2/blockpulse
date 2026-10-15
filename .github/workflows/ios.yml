@@ -1,0 +1,55 @@
+name: iOS app
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode
+        run: xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Build app and widgets for the iOS Simulator
+        run: |
+          mkdir -p build
+          if ! xcodebuild -project Blockpulse.xcodeproj -scheme Blockpulse -configuration Debug \
+              -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dd \
+              CODE_SIGNING_ALLOWED=NO build > build/xcodebuild.log 2>&1; then
+            grep -E "error:" build/xcodebuild.log | sort -u | head -80
+            tail -40 build/xcodebuild.log
+            exit 1
+          fi
+          grep -E "warning:.*/(App|Widgets)/" build/xcodebuild.log | sort -u | head -40 || true
+          tail -3 build/xcodebuild.log
+      - name: Simulator screenshots
+        run: scripts/ci-screenshots.sh build/dd/Build/Products/Debug-iphonesimulator/Blockpulse.app screenshots
+      - name: Live API check (mempool.space, every chart and period)
+        if: always()
+        run: BLOCKPULSE_LIVE=1 swift test --package-path Packages/BitcoinKit --filter LiveSmokeTests
+      # Manual runs also print small JPEG previews into the log, for reviewers who can't download artifacts.
+      - name: Screenshot previews (manual runs)
+        if: always() && github.event_name == 'workflow_dispatch'
+        run: |
+          for f in screenshots/*.png; do
+            name=$(basename "$f" .png)
+            sips -Z 560 -s format jpeg -s formatOptions 45 "$f" --out "/tmp/$name.jpg" >/dev/null
+            echo "PREVIEW-BEGIN $name"
+            base64 -i "/tmp/$name.jpg" | tr -d '\n' | fold -w 3000
+            echo
+            echo "PREVIEW-END $name"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulator-screenshots
+          path: |
+            screenshots/
+            build/xcodebuild.log
+          if-no-files-found: ignore

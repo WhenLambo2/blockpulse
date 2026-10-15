@@ -1,0 +1,22 @@
+name: BitcoinKit
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "mempool instance for the period probe"
+        default: "https://mempool.space"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: swift:6.4-bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path Packages/BitcoinKit
+      - name: Live period probe (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          BLOCKPULSE_PROBE: "1"
+          BLOCKPULSE_BASE: ${{ inputs.base }}
+        run: swift test --package-path Packages/BitcoinKit --filter LivePeriodProbe 2>&1 | grep -E "PROBE|passed|failed"

@@ -1,0 +1,8 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Logo D9 (chosen by Jos, 2026-10-15). Full-bleed square: iOS applies the rounded mask itself. -->
+  <rect width="1024" height="1024" fill="#09090B"/>
+  <polygon points="512,112 862,301 512,490 162,301" fill="#F7931A"/>
+  <polygon points="162,301 512,490 512,868 162,679" fill="#D88218"/>
+  <polygon points="512,490 862,301 862,679 512,868" fill="#B9701A"/>
+  <polyline points="70,650 330,650 410,490 490,770 590,350 680,650 954,650" fill="none" stroke="#FFFFFF" stroke-width="66" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

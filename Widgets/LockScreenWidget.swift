@@ -2,16 +2,45 @@ import SwiftUI
 import WidgetKit
 import BitcoinKit
 
+/// Price on the Lock Screen: circular, rectangular (price, height, fee) and inline.
 struct LockScreenWidget: Widget {
     let kind = "LockScreenWidget"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: LockScreenIntent.self, provider: SnapshotProvider<LockScreenIntent>()) { entry in
+        AppIntentConfiguration(kind: kind, intent: CurrencyIntent.self, provider: SnapshotProvider<CurrencyIntent>()) { entry in
             LockScreenWidgetView(entry: entry)
         }
-        .configurationDisplayName("Blockpulse")
-        .description("Price, block height or fastest fee on your Lock Screen.")
+        .configurationDisplayName("Bitcoin price")
+        .description("Price, block height and fastest fee on your Lock Screen.")
         .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
+    }
+}
+
+/// Fastest fee in a circle.
+struct LockFeeWidget: Widget {
+    let kind = "LockFeeWidget"
+
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: kind, intent: LockFeeIntent.self, provider: SnapshotProvider<LockFeeIntent>()) { entry in
+            LockScreenWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Fastest fee")
+        .description("The fee for the next block, in sat/vB.")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+/// Block height in a circle.
+struct LockHeightWidget: Widget {
+    let kind = "LockHeightWidget"
+
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: kind, intent: LockHeightIntent.self, provider: SnapshotProvider<LockHeightIntent>()) { entry in
+            LockScreenWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Block height")
+        .description("The latest block on the chain.")
+        .supportedFamilies([.accessoryCircular])
     }
 }
 
@@ -109,11 +138,21 @@ struct LockScreenWidgetView: View {
     }
 }
 
-#Preview("Circular", as: .accessoryCircular) {
+#Preview("Circular price", as: .accessoryCircular) {
     LockScreenWidget()
 } timeline: {
     SnapshotEntry.preview(metric: .price)
+}
+
+#Preview("Circular fee", as: .accessoryCircular) {
+    LockFeeWidget()
+} timeline: {
     SnapshotEntry.preview(metric: .fee)
+}
+
+#Preview("Circular height", as: .accessoryCircular) {
+    LockHeightWidget()
+} timeline: {
     SnapshotEntry.preview(metric: .height)
 }
 

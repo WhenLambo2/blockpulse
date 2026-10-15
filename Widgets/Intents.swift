@@ -20,15 +20,10 @@ enum CurrencyOption: String, AppEnum {
     }
 }
 
-enum LockMetric: String, AppEnum {
+/// What a circular Lock Screen widget shows. Each value is its own widget in the gallery,
+/// so two circular widgets side by side never show the same number by default.
+enum LockMetric: String {
     case price, fee, height
-
-    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Metric"
-    static let caseDisplayRepresentations: [LockMetric: DisplayRepresentation] = [
-        .price: "Price",
-        .fee: "Fastest fee",
-        .height: "Block height",
-    ]
 }
 
 /// Implemented by every widget configuration so one provider serves all widgets.
@@ -50,18 +45,17 @@ struct CurrencyIntent: SnapshotWidgetIntent {
     var lockMetric: LockMetric { .price }
 }
 
-struct LockScreenIntent: SnapshotWidgetIntent {
-    static let title: LocalizedStringResource = "Lock Screen"
-    static let description = IntentDescription("Choose what the circular widget shows and the currency.")
-
-    @Parameter(title: "Metric", default: .price)
-    var metric: LockMetric
-
-    @Parameter(title: "Currency", default: .appDefault)
-    var currency: CurrencyOption
-
+/// The fee and block height widgets have nothing to configure.
+struct LockFeeIntent: SnapshotWidgetIntent {
+    static let title: LocalizedStringResource = "Fastest fee"
     init() {}
+    var currencyOption: CurrencyOption { .appDefault }
+    var lockMetric: LockMetric { .fee }
+}
 
-    var currencyOption: CurrencyOption { currency }
-    var lockMetric: LockMetric { metric }
+struct LockHeightIntent: SnapshotWidgetIntent {
+    static let title: LocalizedStringResource = "Block height"
+    init() {}
+    var currencyOption: CurrencyOption { .appDefault }
+    var lockMetric: LockMetric { .height }
 }

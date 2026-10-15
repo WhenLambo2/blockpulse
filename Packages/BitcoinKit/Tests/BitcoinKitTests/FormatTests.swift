@@ -63,8 +63,8 @@ import Testing
 
     @Test func inlineSummary() {
         let full = BitcoinSnapshot.sample()
-        #expect(Format.inline(full, .eur) == "₿ €73,984 · #971,150 · 2 sat/vB")
-        #expect(Format.inline(full, .usd) == "₿ $82,565 · #971,150 · 2 sat/vB")
+        #expect(Format.inline(full, .eur) == "₿ €73,984 · 2 sat/vB")
+        #expect(Format.inline(full, .usd) == "₿ $82,565 · 2 sat/vB")
         var noPrice = full
         noPrice.price = nil
         #expect(Format.inline(noPrice, .eur) == "₿ #971,150 · 2 sat/vB")

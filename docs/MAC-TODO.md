@@ -8,7 +8,7 @@ Check these on the first Xcode build:
 
 ## Widgets (Task 6)
 
-- [ ] Widget previews render for every family (Price S/M, Blocks S/M, Fees S/M, Dashboard L, Lock circular/rectangular/inline) in fresh, stale and empty states.
+- [ ] Widget previews render for every family (Price S/M, Blocks S/M, Fees S/M, Dashboard L, Lock price circular/rectangular/inline, Lock fee circular, Lock height circular) in fresh, stale and empty states.
 - [ ] Tinted / clear Home Screen modes: accent text uses `.widgetAccentable()`; check contrast.
 - [ ] Widget gallery shows the configuration (Currency / Metric) options.
 - [ ] `Intents.swift`: `static let description = IntentDescription(...)` is non-optional while `AppIntent.description` is declared `IntentDescription?`. If the gallery/edit sheet shows no description (silent fallback to the default `nil`), change both intents to `static let description: IntentDescription? = IntentDescription("…")`.
@@ -65,3 +65,8 @@ CI screenshots cover the three tabs; check these by hand on a device:
 - [ ] Charts: the next chart's top shows behind the tab bar; swiping up snaps card by card; the last card can still be fully shown.
 - [ ] Block found: glow races and shakes along the line, then lights up the whole card (wave, border, shake), number rolls, heavy tap plus success haptic.
 - [ ] Brand (D9 board): header shows the symbol without tile, white pulse in dark and ink pulse in light; Settings → About shows the app icon; Home Screen Dark and Tinted icon styles use the supplied variants (long-press Home Screen → Edit → Customize).
+
+## Lock Screen fix
+- [ ] Widget gallery shows three circular Lock Screen widgets: Bitcoin price, Fastest fee, Block height.
+- [ ] Inline widget next to the date reads "₿ €73,541 · 1.7 sat/vB" in full, in English and Dutch date formats.
+- [ ] Price and fee circular widgets side by side on a dark and a light Lock Screen.

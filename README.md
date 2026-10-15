@@ -13,7 +13,7 @@ Data: public `https://mempool.space` by default (no API key). Settings can switc
 - Mac first run: `./scripts/bootstrap-mac.sh`, then follow `docs/MAC-SETUP.md`
 - Tests: `swift test --package-path Packages/BitcoinKit`
 - Live API check: `BLOCKPULSE_LIVE=1 swift test --package-path Packages/BitcoinKit --filter LiveSmokeTests`
-- Simulator build + screenshots: CI workflow `iOS app` (`.github/workflows/ios.yml`, `scripts/ci-screenshots.sh`); screenshots are a run artifact
+- Simulator build: CI workflow `iOS app` on every PR. Screenshots only on a manual run (Actions, iOS app, Run workflow; `scripts/ci-screenshots.sh`), as a run artifact. On a Mac: `scripts/mac-screenshots.sh`
 - Regenerate project after editing `project.yml`: `xcodegen generate`
 
 ## License and trademarks

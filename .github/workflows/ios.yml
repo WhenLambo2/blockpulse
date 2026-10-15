@@ -28,7 +28,10 @@ jobs:
           fi
           grep -E "warning:.*/(App|Widgets)/" build/xcodebuild.log | sort -u | head -40 || true
           tail -3 build/xcodebuild.log
-      - name: Simulator screenshots
+      # Screenshots take most of the run (8 launches of 20 s plus simulator boot), so they only run
+      # when asked: Actions → iOS app → Run workflow. Pushes and PRs just build and run the live check.
+      - name: Simulator screenshots (manual runs)
+        if: github.event_name == 'workflow_dispatch'
         run: scripts/ci-screenshots.sh build/dd/Build/Products/Debug-iphonesimulator/Blockpulse.app screenshots
       - name: Live API check (mempool.space, every chart and period)
         if: always()

@@ -71,28 +71,23 @@ final class CaptureTests: XCTestCase {
 
     /// Charts: swipe sideways from Market through Fees and Mempool to Mining, then up through the mining charts.
     /// Runs twice: the first pass draws every chart once, so the second (the one to use) has no first-draw hitches.
+    /// Nothing is tapped in the category bar: it scrolls along with the swipes, so a chip can be off screen.
     func test3ChartsSwipe() {
-        // No -chartsCategory here: a launch argument pins the category, so the bar on top wouldn't follow the swipes.
-        launch(["-selectedTab", "charts"])
+        // -demoStartCategory, not -chartsCategory: a launch argument would pin the bar on top while the pages move.
+        launch(["-selectedTab", "charts", "-demoStartCategory", "market"])
         wait(3)
+        let left = (CGVector(dx: 0.85, dy: 0.215), CGVector(dx: 0.2, dy: 0.215))
+        let up = (CGVector(dx: 0.5, dy: 0.78), CGVector(dx: 0.5, dy: 0.35))
         for pass in 0..<2 {
-            tapIfPresent("Market")
-            wait(pass == 0 ? 2 : 3)
-            for _ in 0..<3 {
-                // Over the card's title, not the plot, so the swipe pages instead of scrubbing the chart.
-                drag(from: CGVector(dx: 0.85, dy: 0.215), to: CGVector(dx: 0.2, dy: 0.215), velocity: 1400)
-                wait(pass == 0 ? 1.5 : 2.2)
-            }
-            for _ in 0..<2 {
-                drag(from: CGVector(dx: 0.5, dy: 0.78), to: CGVector(dx: 0.5, dy: 0.35), velocity: 1600)
-                wait(pass == 0 ? 1.5 : 2.2)
-            }
-            // Back up, so the second pass starts Mining at its first chart again.
+            let pause = pass == 0 ? 1.5 : 2.2
+            // Over the card's title, not the plot, so the swipe pages instead of scrubbing the chart.
+            for _ in 0..<3 { drag(from: left.0, to: left.1, velocity: 1400); wait(pause) }
+            for _ in 0..<2 { drag(from: up.0, to: up.1, velocity: 1600); wait(pause) }
             if pass == 0 {
-                for _ in 0..<2 {
-                    drag(from: CGVector(dx: 0.5, dy: 0.35), to: CGVector(dx: 0.5, dy: 0.78), velocity: 1600)
-                    wait(1.5)
-                }
+                // Back to Mining's first chart and then to Market, for the pass that counts.
+                for _ in 0..<2 { drag(from: up.1, to: up.0, velocity: 1600); wait(1.2) }
+                for _ in 0..<3 { drag(from: left.1, to: left.0, velocity: 1400); wait(1.2) }
+                wait(1.5)
             }
         }
     }

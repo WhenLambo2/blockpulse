@@ -13,6 +13,7 @@ struct BlockpulseApp: App {
 
     init() {
         _ = DemoMode.launchedAt
+        DemoMode.applyLaunchOptions()
     }
 
     /// Every tap on a tab goes through here, including taps on the tab that is already open,

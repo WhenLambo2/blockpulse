@@ -7,11 +7,20 @@ import BitcoinKit
 /// - `-demoData YES`: replay saved mempool responses (recorded on first use) so every take shows the same numbers.
 /// - `-demoNewBlockAfter 9`: hold the newest block back for 9 s after launch, then let it arrive, which plays
 ///   the real block-found flow on the home screen.
+/// - `-demoStartCategory market`: open the Charts tab on that category. Unlike `-chartsCategory`, which
+///   pins the category for the whole run, the category bar still follows swipes.
 enum DemoMode {
     /// Set in `BlockpulseApp.init`, so "seconds after launch" counts from the launch.
     static let launchedAt = Date()
 
     static var isOn: Bool { UserDefaults.standard.bool(forKey: "demoData") }
+
+    /// Called once at launch: stores the start category as if the user had picked it.
+    static func applyLaunchOptions() {
+        let defaults = UserDefaults.standard
+        guard isOn, let category = defaults.string(forKey: "demoStartCategory") else { return }
+        defaults.set(category, forKey: "chartsCategory")
+    }
 
     static var newBlockAfter: TimeInterval? {
         let seconds = UserDefaults.standard.double(forKey: "demoNewBlockAfter")

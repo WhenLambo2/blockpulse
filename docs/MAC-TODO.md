@@ -69,3 +69,7 @@ CI screenshots cover the three tabs; check these by hand on a device:
 - [ ] Widget gallery shows three circular Lock Screen widgets: Bitcoin price, Fastest fee, Block height.
 - [ ] Inline widget next to the date reads "₿ €73,541 · 1.7 sat/vB" in full, in English and Dutch date formats.
 - [ ] Price and fee circular widgets side by side on a dark and a light Lock Screen.
+
+## Privacy link
+- [ ] Settings, About: "Privacy policy" opens https://blockpul.se/privacy in Safari, in dark and light.
+- [ ] App Store Connect, App Privacy: Privacy Policy URL is https://blockpul.se/privacy.

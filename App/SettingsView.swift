@@ -64,6 +64,10 @@ struct SettingsView: View {
                         LabeledContent("Version", value: Bundle.main.versionString)
                         LabeledContent("Data", value: dataHost)
                         LabeledContent("Made by", value: "Arterion")
+                        // Apple requires the privacy policy to be reachable from inside the app.
+                        Link(destination: URL(string: "https://blockpul.se/privacy")!) {
+                            Label("Privacy policy", systemImage: "hand.raised")
+                        }
                     }
                 }
                 .scrollContentBackground(.hidden)

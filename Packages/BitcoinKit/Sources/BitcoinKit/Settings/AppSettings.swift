@@ -5,7 +5,6 @@ public struct AppSettings {
     public enum Keys {
         public static let currency = "currency"
         public static let baseURL = "baseURL"
-        public static let migratedToPublicDefault = "migratedToPublicDefault"
     }
 
     private let defaults: UserDefaults
@@ -39,16 +38,6 @@ public struct AppSettings {
 
     /// Whether a custom instance is set (anything other than public mempool.space).
     public var usesCustomInstance: Bool { baseURL != MempoolClient.defaultBaseURL }
-
-    /// v2.1 made public mempool.space the default. Up to v2 Settings saved the then-default
-    /// Blockrise URL explicitly, so a stored Blockrise value is cleared once to move those users over.
-    public func migrateToPublicDefault() {
-        guard !defaults.bool(forKey: Keys.migratedToPublicDefault) else { return }
-        defaults.set(true, forKey: Keys.migratedToPublicDefault)
-        if Self.validatedBaseURL(baseURLString) == MempoolClient.blockriseBaseURL {
-            defaults.removeObject(forKey: Keys.baseURL)
-        }
-    }
 
     /// Trims whitespace and trailing slashes; requires http(s) and a host.
     public static func validatedBaseURL(_ input: String?) -> URL? {

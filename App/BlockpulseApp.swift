@@ -11,10 +11,6 @@ struct BlockpulseApp: App {
 
     private var appearance: Appearance { Appearance(rawValue: appearanceRaw) ?? .dark }
 
-    init() {
-        AppSettings.shared().migrateToPublicDefault()
-    }
-
     /// Every tap on a tab goes through here, including taps on the tab that is already open,
     /// which is how the Blockpulse tab counts taps for the easter egg.
     private var tabSelection: Binding<String> {

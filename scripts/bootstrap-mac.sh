@@ -37,7 +37,7 @@ xcodebuild -project Blockpulse.xcodeproj -scheme Blockpulse \
   -destination 'generic/platform=iOS Simulator' -configuration Debug build \
   CODE_SIGNING_ALLOWED=NO | tail -25
 
-step "BitcoinKit live smoke test against blockrise.mempool.space (non-fatal)"
+step "BitcoinKit live smoke test against mempool.space (non-fatal)"
 BLOCKPULSE_LIVE=1 swift test --package-path Packages/BitcoinKit --filter LiveSmokeTests \
   || echo "WARN: live smoke test failed (network?) — unit tests and build already passed"
 

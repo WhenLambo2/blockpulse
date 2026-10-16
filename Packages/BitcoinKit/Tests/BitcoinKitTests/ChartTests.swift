@@ -206,6 +206,18 @@ import Testing
         #expect(zip(out, out.dropFirst()).allSatisfy { $0.date < $1.date })
         #expect(Downsample.bucketAverage(Array(points.prefix(50)), maxCount: 100).count == 50)
     }
+
+    @Test func downsampleBucketsByTimeNotCount() {
+        // Like mempool's price history: daily for the first 1,000 days, hourly for the last 1,000.
+        let day: TimeInterval = 86_400
+        let daily = (0..<1_000).map { ChartPoint(date: Date(timeIntervalSince1970: Double($0) * day), value: Double($0)) }
+        let hourly = (0..<24_000).map { ChartPoint(date: Date(timeIntervalSince1970: 1_000 * day + Double($0) * 3_600), value: 5_000) }
+        let out = Downsample.bucketAverage(daily + hourly, maxCount: 240)
+        let older = out.filter { $0.date.timeIntervalSince1970 < 1_000 * day }
+        #expect(older.count >= 100)  // about half the points, not a handful
+        #expect(older.allSatisfy { abs($0.value - $0.date.timeIntervalSince1970 / day) < 10 })
+        #expect(zip(out, out.dropFirst()).allSatisfy { $0.date < $1.date })
+    }
 }
 
 @Suite struct ChartLoaderTests {

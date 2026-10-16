@@ -41,7 +41,8 @@ jobs:
             grep -E "error:" build/capture-build.log | sort -u | head -40
             exit 1
           fi
-      # Manual runs with "capture" ticked run every take once, to prove the scripted gestures still work.
+      # Manual runs with "capture" ticked run every take once (about 17 min), to prove the scripted
+      # gestures still work. They skip the screenshots.
       - name: Capture takes (manual runs)
         if: github.event_name == 'workflow_dispatch' && inputs.capture
         run: |
@@ -49,15 +50,15 @@ jobs:
           ls -la captures
       # Screenshots take most of the run (8 launches of 20 s plus simulator boot), so they only run
       # when asked: Actions → iOS app → Run workflow. Pushes and PRs just build and run the live check.
-      - name: Simulator screenshots (manual runs)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Simulator screenshots (manual runs, not capture runs)
+        if: github.event_name == 'workflow_dispatch' && !inputs.capture
         run: scripts/ci-screenshots.sh build/dd/Build/Products/Debug-iphonesimulator/Blockpulse.app screenshots
       - name: Live API check (mempool.space, every chart and period)
         if: always()
         run: BLOCKPULSE_LIVE=1 swift test --package-path Packages/BitcoinKit --filter LiveSmokeTests
       # Manual runs also print small JPEG previews into the log, for reviewers who can't download artifacts.
       - name: Screenshot previews (manual runs)
-        if: always() && github.event_name == 'workflow_dispatch'
+        if: always() && github.event_name == 'workflow_dispatch' && !inputs.capture
         run: |
           for f in screenshots/*.png; do
             name=$(basename "$f" .png)

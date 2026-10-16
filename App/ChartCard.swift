@@ -35,6 +35,8 @@ struct ChartCard: View {
     @State private var result: ChartResult?
     @State private var error: String?
     @State private var isLoading = false
+    /// The value under the finger while scrubbing; the headline shows it instead of the latest value.
+    @State private var scrub: ChartScrub?
 
     private var currency: Currency { Currency(rawValue: currencyRaw) ?? .eur }
 
@@ -62,10 +64,11 @@ struct ChartCard: View {
                     if showTable && id.hasTable {
                         ChartTableView(table: result.table, limit: 12) { showFullTable = true }
                     } else {
-                        // A fresh chart per period: animating one data set into another with a different
-                        // number of points smears the lines and fills the area under them.
-                        ChartCanvas(result: result, hidden: $hiddenLines)
-                            .id("\(result.id.rawValue)|\(result.period?.rawValue ?? "-")|\(currency.code)")
+                        // Single-line charts morph from one period into the next (both are resampled to the
+                        // same points). Others get a fresh chart per period: animating one data set into another
+                        // with a different number of points smears the lines and fills the area under them.
+                        ChartCanvas(result: result, hidden: $hiddenLines, scrub: $scrub)
+                            .id("\(result.id.rawValue)|\(ChartCanvas.morphs(result) ? "-" : result.period?.rawValue ?? "-")|\(currency.code)")
                             .opacity(isStale ? 0.35 : 1)
                     }
                 } else if let error {
@@ -119,13 +122,18 @@ struct ChartCard: View {
             }
             .font(.title3)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(result?.headline ?? "—")
+                Text(scrub?.value ?? result?.headline ?? "—")
                     .font(.number(.title, weight: .bold))
                     .contentTransition(.numericText())
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .layoutPriority(1)
-                if let change = result?.change {
+                if let scrub {
+                    Text(scrub.date, format: scrubDateFormat)
+                        .font(.number(.subheadline))
+                        .lineLimit(1)
+                        .foregroundStyle(.secondary)
+                } else if let change = result?.change {
                     Text(Format.change(change))
                         .font(.number(.subheadline))
                         .lineLimit(1)
@@ -135,14 +143,28 @@ struct ChartCard: View {
         }
     }
 
+    /// Hours only matter on the short periods.
+    private var scrubDateFormat: Date.FormatStyle {
+        switch period ?? id.defaultPeriod {
+        case .twoHours, .day, .week: .dateTime.day().month(.abbreviated).hour().minute()
+        default: .dateTime.day().month(.abbreviated).year()
+        }
+    }
+
+    /// A new period's chart morphs in (single-line charts) or fades in, and the headline rolls to its value.
+    private func show(_ new: ChartResult) {
+        guard new != result else { return }
+        withAnimation(result == nil ? nil : .smooth(duration: 0.55)) { result = new }
+    }
+
     private func load(force: Bool) async {
         // Show what's cached for this period straight away; otherwise the previous period stays, dimmed.
-        if let cached = await ChartStore.loader.cached(id, period: period, currency: currency) { result = cached }
+        if let cached = await ChartStore.loader.cached(id, period: period, currency: currency) { show(cached) }
         isLoading = true
         defer { isLoading = false }
         do {
             let loaded = try await ChartStore.loader.load(id, period: period, currency: currency, force: force)
-            result = loaded
+            show(loaded)
             error = nil
         } catch {
             self.error = (error as? MempoolError)?.userMessage ?? error.localizedDescription
@@ -153,6 +175,12 @@ struct ChartCard: View {
 
 // MARK: - Chart drawing
 
+/// What the card's headline shows while a finger is on the chart.
+struct ChartScrub: Equatable {
+    let value: String
+    let date: Date
+}
+
 /// Draws a `ChartResult` in its chart style, with press-and-drag to read values.
 struct ChartCanvas: View {
     let result: ChartResult
@@ -160,6 +188,28 @@ struct ChartCanvas: View {
     @State private var selectedLabel: String?
     /// Lines hidden by tapping their legend entry (hashrate chart); kept by the card across periods.
     @Binding var hidden: Set<String>
+    /// Single-series charts report the value under the finger here, for the card's headline.
+    @Binding var scrub: ChartScrub?
+
+    /// Points every morphing chart is resampled to, so one period's line can move point by point into the next.
+    static let morphPoints = 240
+
+    /// Single-line charts (price, sats, block fees...) morph between periods instead of being replaced.
+    static func morphs(_ result: ChartResult) -> Bool {
+        result.id.style == .line && result.series.count == 1
+    }
+
+    /// One drawn point, numbered so a morphing chart keeps the same points across periods.
+    private struct DrawnPoint: Identifiable {
+        let id: Int
+        let date: Date
+        let value: Double
+    }
+
+    private func drawn(_ line: Line) -> [DrawnPoint] {
+        let points = Self.morphs(result) ? Downsample.resample(line.points, count: Self.morphPoints) : line.points
+        return points.enumerated().map { DrawnPoint(id: $0.offset, date: $0.element.date, value: $0.element.value) }
+    }
 
     var body: some View {
         switch result.id.style {
@@ -229,7 +279,7 @@ struct ChartCanvas: View {
                 }
             }
             ForEach(visible) { line in
-                ForEach(line.points) { p in
+                ForEach(drawn(line)) { p in
                     LineMark(x: .value("Date", p.date), y: .value("Value", p.value), series: .value("Series", line.id))
                         .foregroundStyle(line.color)
                         .lineStyle(StrokeStyle(lineWidth: line.width, dash: line.dashed ? [4, 3] : []))
@@ -237,10 +287,13 @@ struct ChartCanvas: View {
                 }
             }
             if let selected {
+                // Plain lines show the value in the card's headline; the readout is for bands and several lines.
                 RuleMark(x: .value("Selected", selected.date))
                     .foregroundStyle(Color.secondary.opacity(0.5))
                     .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                        readout(date: selected.date, lines: readoutLines(at: selected.date, visible: visible))
+                        if !headlineFollows {
+                            readout(date: selected.date, lines: readoutLines(at: selected.date, visible: visible))
+                        }
                     }
                 PointMark(x: .value("Date", selected.date), y: .value("Value", selected.value))
                     .foregroundStyle(Theme.orange)
@@ -261,6 +314,11 @@ struct ChartCanvas: View {
             }
         }
         .chartXSelection(value: $selectedDate)
+        .onChange(of: selected?.date) { _, _ in
+            guard let s = result.series.first, result.series.count == 1 else { return }
+            scrub = selected.map { ChartScrub(value: s.unit.format($0.value), date: $0.date) }
+        }
+        .onDisappear { scrub = nil }
         .padding(.top, all.count > 1 ? 36 : 28)  // room for the readout and legend
         .overlay(alignment: .topLeading) {
             if all.count > 1 {
@@ -271,6 +329,11 @@ struct ChartCanvas: View {
                 .opacity(selected == nil ? 1 : 0)
             }
         }
+    }
+
+    /// The card's headline carries the scrubbed value for a single plain line.
+    private var headlineFollows: Bool {
+        result.series.count == 1 && result.id.style != .band
     }
 
     /// Tappable legend entry that shows or hides its line.

@@ -30,25 +30,8 @@ import Testing
         #expect(!settings.usesCustomInstance)
     }
 
-    @Test func migrationClearsStoredBlockriseOnce() {
-        settings.baseURLString = "https://blockrise.mempool.space"
-        settings.migrateToPublicDefault()
-        #expect(settings.baseURL == MempoolClient.defaultBaseURL)
-        // Choosing Blockrise again afterwards sticks.
-        settings.baseURLString = "https://blockrise.mempool.space"
-        settings.migrateToPublicDefault()
-        #expect(settings.baseURL == MempoolClient.blockriseBaseURL)
-        #expect(settings.usesCustomInstance)
-    }
-
-    @Test func migrationKeepsOtherCustomInstances() {
-        settings.baseURLString = "http://umbrel.local:3006"
-        settings.migrateToPublicDefault()
-        #expect(settings.baseURL.absoluteString == "http://umbrel.local:3006")
-    }
-
     @Test(arguments: [
-        ("https://blockrise.mempool.space", "https://blockrise.mempool.space"),
+        ("https://mempool.example.org", "https://mempool.example.org"),
         ("  https://mempool.space/  ", "https://mempool.space"),
         ("https://mempool.space///", "https://mempool.space"),
         ("http://umbrel.local:3006", "http://umbrel.local:3006"),

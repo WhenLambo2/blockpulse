@@ -144,4 +144,26 @@ public enum Downsample {
         out.append(points[points.count - 1])
         return out
     }
+
+    /// Exactly `count` points at evenly spaced moments from the first to the last date, read off the
+    /// line between neighbours. Two charts resampled to the same count can morph into each other point
+    /// by point (switching period), instead of points popping in and out.
+    public static func resample(_ points: [ChartPoint], count: Int) -> [ChartPoint] {
+        guard count >= 2, points.count >= 2 else { return points }
+        let start = points[0].date.timeIntervalSince1970
+        let span = points[points.count - 1].date.timeIntervalSince1970 - start
+        guard span > 0 else { return points }
+        var out: [ChartPoint] = []
+        out.reserveCapacity(count)
+        var j = 0
+        for i in 0..<count {
+            let t = start + span * Double(i) / Double(count - 1)
+            while j < points.count - 2 && points[j + 1].date.timeIntervalSince1970 < t { j += 1 }
+            let a = points[j], b = points[j + 1]
+            let ta = a.date.timeIntervalSince1970, tb = b.date.timeIntervalSince1970
+            let f = tb > ta ? min(max((t - ta) / (tb - ta), 0), 1) : 0
+            out.append(ChartPoint(date: Date(timeIntervalSince1970: t), value: a.value + (b.value - a.value) * f))
+        }
+        return out
+    }
 }

@@ -56,8 +56,7 @@ CI screenshots cover the three tabs; check these by hand on a device:
 - [ ] Charts: hashrate legend chips hide/show Hashrate, Average and Difficulty; with only Difficulty shown, the axis labels hide.
 - [ ] Recent blocks chart: block cards scroll sideways inside the vertical pager without fighting it.
 - [ ] Settings tab: Appearance changes apply live everywhere, including System after Dark (window style override).
-- [ ] Data source: switching mempool.space / Blockrise / Custom reloads home and charts without a relaunch; Test connection uses the chosen URL; widgets follow.
-- [ ] Existing v2 install with Blockrise saved moves to mempool.space once after updating (migration), and can pick Blockrise again.
+- [ ] Data source: switching between mempool.space and Custom reloads home and charts without a relaunch; Test connection uses the chosen URL; widgets follow.
 
 ## v2.2 feedback (2026-10-15)
 

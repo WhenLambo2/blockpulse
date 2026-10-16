@@ -63,7 +63,7 @@ struct SettingsView: View {
                         .accessibilityElement(children: .combine)
                         LabeledContent("Version", value: Bundle.main.versionString)
                         LabeledContent("Data", value: dataHost)
-                        LabeledContent("Made by", value: "Blockrise")
+                        LabeledContent("Made by", value: "Arterion")
                     }
                 }
                 .scrollContentBackground(.hidden)
@@ -75,15 +75,14 @@ struct SettingsView: View {
     }
 }
 
-/// Public mempool.space, the Blockrise instance, or any other mempool.space-compatible URL.
+/// Public mempool.space or any other mempool.space-compatible URL.
 struct DataSourceSection: View {
     enum Source: String, CaseIterable, Identifiable {
-        case mempool, blockrise, custom
+        case mempool, custom
         var id: String { rawValue }
         var label: String {
             switch self {
             case .mempool: "mempool.space"
-            case .blockrise: "Blockrise"
             case .custom: "Custom"
             }
         }
@@ -97,7 +96,7 @@ struct DataSourceSection: View {
 
     init() {
         let url = AppSettings.shared().baseURL
-        let source: Source = url == MempoolClient.defaultBaseURL ? .mempool : url == MempoolClient.blockriseBaseURL ? .blockrise : .custom
+        let source: Source = url == MempoolClient.defaultBaseURL ? .mempool : .custom
         _source = State(initialValue: source)
         _customText = State(initialValue: source == .custom ? url.absoluteString : "")
     }
@@ -105,7 +104,6 @@ struct DataSourceSection: View {
     private var selectedURL: URL? {
         switch source {
         case .mempool: MempoolClient.defaultBaseURL
-        case .blockrise: MempoolClient.blockriseBaseURL
         case .custom: AppSettings.validatedBaseURL(customText)
         }
     }

@@ -1,7 +1,7 @@
 # Blockpulse
 
 Free and open source iOS app with Bitcoin widgets: price (EUR/USD), blocks, fees and mempool. Site: https://blockpul.se
-Data: public `https://mempool.space` by default (no API key). Settings can switch to the Blockrise instance `https://blockrise.mempool.space` or any mempool.space-compatible URL; widgets follow.
+Data: public `https://mempool.space` by default (no API key). Settings can switch to any mempool.space-compatible URL, such as your own node; widgets follow.
 
 ## Layout
 - `Packages/BitcoinKit`: API client, models, snapshot cache, formatting, settings. Pure Foundation, tested on Linux and macOS.
@@ -18,4 +18,4 @@ Data: public `https://mempool.space` by default (no API key). Settings can switc
 
 ## License and trademarks
 The code is MIT licensed (see `LICENSE`).
-The license covers the code only. The Blockpulse and Blockrise names, the Blockpulse logo and app icon are not licensed for reuse: a fork published to the App Store or elsewhere needs its own name and icon.
+The license covers the code only. The Blockpulse name, logo and app icon belong to Arterion Consultancy B.V. and are not licensed for reuse: a fork published to the App Store or elsewhere needs its own name and icon.

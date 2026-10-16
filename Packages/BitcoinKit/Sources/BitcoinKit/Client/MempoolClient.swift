@@ -21,8 +21,6 @@ public struct ConnectionCheck: Sendable, Equatable {
 /// Client for the mempool.space-compatible REST API (public mempool.space by default).
 public struct MempoolClient: Sendable {
     public static let defaultBaseURL = URL(string: "https://mempool.space")!
-    /// Blockrise Enterprise instance, offered as a preset in Settings.
-    public static let blockriseBaseURL = URL(string: "https://blockrise.mempool.space")!
     /// Chart endpoints over long periods return up to about 1 MB and can take seconds server-side.
     public static let chartTimeout: TimeInterval = 30
     static let userAgent = "Blockpulse/1.0"

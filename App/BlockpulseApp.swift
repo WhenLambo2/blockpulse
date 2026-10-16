@@ -12,7 +12,6 @@ struct BlockpulseApp: App {
     private var appearance: Appearance { Appearance(rawValue: appearanceRaw) ?? .dark }
 
     init() {
-        AppSettings.shared().migrateToPublicDefault()
         _ = DemoMode.launchedAt
     }
 

@@ -7,7 +7,7 @@ import FoundationNetworking
 /// A request with nothing saved yet is fetched once from `upstream` and saved for the next take.
 ///
 /// Block times are shifted so the newest block is always `tipAge` seconds old. With `newBlockAt`,
-/// the newest block is held back until that moment and then appears two seconds "old", so the first
+/// the newest block is held back until that moment and is timestamped at it, so the first
 /// refresh after it plays the app's real block-found flow, block number included.
 public actor FixtureTransport: HTTPTransport {
     public static let blocksPath = "/api/v1/blocks"
@@ -62,7 +62,7 @@ public actor FixtureTransport: HTTPTransport {
         guard var blocks = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]],
               let newest = blocks.first?["timestamp"] as? Int else { return data }
         let current = now()
-        let tipDate = newBlockAt.map { $0.addingTimeInterval(-2) } ?? current.addingTimeInterval(-tipAge)
+        let tipDate = newBlockAt ?? current.addingTimeInterval(-tipAge)
         let shift = Int(tipDate.timeIntervalSince1970) - newest
         blocks = blocks.map { block in
             var block = block

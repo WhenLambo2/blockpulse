@@ -61,7 +61,7 @@ import Testing
         clock.now = release.addingTimeInterval(1)
         let after = try await client(transport).recentBlocks()
         #expect(after.first?.height == original[0].height)
-        #expect(after.first?.timestamp == 1_800_000_000 - 2)
+        #expect(after.first?.timestamp == 1_800_000_000)
     }
 }
 

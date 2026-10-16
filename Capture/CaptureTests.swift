@@ -57,30 +57,43 @@ final class CaptureTests: XCTestCase {
         wait(17)
     }
 
-    /// Home: scroll down through fees, mempool and difficulty, then flick back to the top.
+    /// Home: one slow scroll from the top to the end of the page, then a flick back to the top.
+    /// The page is only about 400 points taller than the screen: more scrolling hits the end and bounces.
     func test2HomeScroll() {
         launch(["-selectedTab", "pulse"])
         wait(4)
-        for _ in 0..<3 {
-            drag(from: CGVector(dx: 0.5, dy: 0.78), to: CGVector(dx: 0.5, dy: 0.42), velocity: 700)
-            wait(2.4)
-        }
+        // The finger stops before lifting (hold), so the page glides at an even speed and doesn't fling past the end.
+        drag(from: CGVector(dx: 0.5, dy: 0.8), to: CGVector(dx: 0.5, dy: 0.36), velocity: 320, hold: 0.3)
+        wait(2.5)
         drag(from: CGVector(dx: 0.5, dy: 0.3), to: CGVector(dx: 0.5, dy: 0.85), velocity: 2600)
         wait(3)
     }
 
-    /// Charts: swipe sideways through the categories, then up through the mempool charts.
+    /// Charts: swipe sideways from Market through Fees and Mempool to Mining, then up through the mining charts.
+    /// Runs twice: the first pass draws every chart once, so the second (the one to use) has no first-draw hitches.
     func test3ChartsSwipe() {
-        launch(["-selectedTab", "charts", "-chartsCategory", "favourites"])
-        wait(4)
-        for _ in 0..<3 {
-            // Over the card's title, not the plot, so the swipe pages instead of scrubbing the chart.
-            drag(from: CGVector(dx: 0.85, dy: 0.215), to: CGVector(dx: 0.2, dy: 0.215), velocity: 1400)
-            wait(2.2)
-        }
-        for _ in 0..<2 {
-            drag(from: CGVector(dx: 0.5, dy: 0.78), to: CGVector(dx: 0.5, dy: 0.35), velocity: 1600)
-            wait(2.2)
+        // No -chartsCategory here: a launch argument pins the category, so the bar on top wouldn't follow the swipes.
+        launch(["-selectedTab", "charts"])
+        wait(3)
+        for pass in 0..<2 {
+            tapIfPresent("Market")
+            wait(pass == 0 ? 2 : 3)
+            for _ in 0..<3 {
+                // Over the card's title, not the plot, so the swipe pages instead of scrubbing the chart.
+                drag(from: CGVector(dx: 0.85, dy: 0.215), to: CGVector(dx: 0.2, dy: 0.215), velocity: 1400)
+                wait(pass == 0 ? 1.5 : 2.2)
+            }
+            for _ in 0..<2 {
+                drag(from: CGVector(dx: 0.5, dy: 0.78), to: CGVector(dx: 0.5, dy: 0.35), velocity: 1600)
+                wait(pass == 0 ? 1.5 : 2.2)
+            }
+            // Back up, so the second pass starts Mining at its first chart again.
+            if pass == 0 {
+                for _ in 0..<2 {
+                    drag(from: CGVector(dx: 0.5, dy: 0.35), to: CGVector(dx: 0.5, dy: 0.78), velocity: 1600)
+                    wait(1.5)
+                }
+            }
         }
     }
 

@@ -9,6 +9,9 @@ struct PulseView: View {
     @State private var dropTarget: HomeCard?
     /// Block number on screen. It trails the real tip so it rolls over when the celebration bursts.
     @State private var shownTip: Int?
+    /// While the old number is held for the celebration, the old block's time, so "since the last block"
+    /// resets together with the number instead of a second before it.
+    @State private var heldBlockDate: Date?
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppSettings.Keys.currency, store: AppSettings.sharedDefaults)
     private var currencyRaw = Currency.eur.rawValue
@@ -133,7 +136,7 @@ struct PulseView: View {
                     }
                 }
             }
-            if let last = s.lastBlockDate {
+            if let last = heldBlockDate ?? s.lastBlockDate {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text("\(elapsed(since: last, now: context.date)) since the last block")
                         .font(.number(.subheadline, weight: .regular))
@@ -156,7 +159,10 @@ struct PulseView: View {
             if let old, new > old {
                 var still = Transaction()
                 still.disablesAnimations = true
-                withTransaction(still) { shownTip = old }  // keep the old number until the burst
+                withTransaction(still) {  // keep the old number until the burst
+                    shownTip = old
+                    heldBlockDate = s.blocks.first { $0.height == old }?.timestamp
+                }
                 rollTip(from: old, to: new)
             } else {
                 shownTip = new
@@ -177,6 +183,7 @@ struct PulseView: View {
             still.disablesAnimations = true
             withTransaction(still) { shownTip = from }
             try? await Task.sleep(for: .milliseconds(40))
+            heldBlockDate = nil
             withAnimation(.spring(duration: 0.8, bounce: 0.35)) { shownTip = to }
         }
     }

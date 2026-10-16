@@ -35,6 +35,8 @@ struct ChartCard: View {
     @State private var result: ChartResult?
     @State private var error: String?
     @State private var isLoading = false
+    /// Loading has taken long enough to show it; quick loads swap (or morph) without a dim and spinner flash.
+    @State private var isSlow = false
     /// The value under the finger while scrubbing; the headline shows it instead of the latest value.
     @State private var scrub: ChartScrub?
 
@@ -69,7 +71,7 @@ struct ChartCard: View {
                         // with a different number of points smears the lines and fills the area under them.
                         ChartCanvas(result: result, hidden: $hiddenLines, scrub: $scrub)
                             .id("\(result.id.rawValue)|\(ChartCanvas.morphs(result) ? "-" : result.period?.rawValue ?? "-")|\(currency.code)")
-                            .opacity(isStale ? 0.35 : 1)
+                            .opacity(isStale && isSlow ? 0.35 : 1)
                     }
                 } else if let error {
                     ContentUnavailableView {
@@ -80,7 +82,7 @@ struct ChartCard: View {
                         Button("Try again") { Task { await load(force: true) } }
                     }
                 }
-                if isLoading && (result == nil || isStale) { ProgressView().tint(Theme.orange) }
+                if isLoading && isSlow && (result == nil || isStale) { ProgressView().tint(Theme.orange) }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             Text(id.subtitle).font(.caption).foregroundStyle(.secondary)
@@ -161,7 +163,11 @@ struct ChartCard: View {
         // Show what's cached for this period straight away; otherwise the previous period stays, dimmed.
         if let cached = await ChartStore.loader.cached(id, period: period, currency: currency) { show(cached) }
         isLoading = true
-        defer { isLoading = false }
+        let slow = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            if !Task.isCancelled { isSlow = true }
+        }
+        defer { slow.cancel(); isLoading = false; isSlow = false }
         do {
             let loaded = try await ChartStore.loader.load(id, period: period, currency: currency, force: force)
             show(loaded)

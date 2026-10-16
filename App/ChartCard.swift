@@ -13,7 +13,7 @@ enum ChartStore {
         if let current, current.url == url { return current.loader }
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
         let file = url == MempoolClient.defaultBaseURL ? "price-history.json" : "price-history-\(url.host() ?? "custom").json"
-        let loader = ChartLoader(client: MempoolClient(baseURL: url), priceHistoryFile: caches?.appendingPathComponent(file))
+        let loader = ChartLoader(client: MempoolClient(baseURL: url, transport: DemoMode.transport), priceHistoryFile: caches?.appendingPathComponent(file))
         current = (url, loader)
         return loader
     }

@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      capture:
+        description: "Also run the launch film capture takes"
+        type: boolean
+        default: false
 jobs:
   simulator:
     runs-on: macos-15
@@ -28,6 +33,20 @@ jobs:
           fi
           grep -E "warning:.*/(App|Widgets)/" build/xcodebuild.log | sort -u | head -40 || true
           tail -3 build/xcodebuild.log
+      - name: Build the capture tests (launch film takes)
+        run: |
+          if ! xcodebuild -project Blockpulse.xcodeproj -scheme BlockpulseCapture -configuration Debug \
+              -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dd \
+              CODE_SIGNING_ALLOWED=NO build-for-testing > build/capture-build.log 2>&1; then
+            grep -E "error:" build/capture-build.log | sort -u | head -40
+            exit 1
+          fi
+      # Manual runs with "capture" ticked run every take once, to prove the scripted gestures still work.
+      - name: Capture takes (manual runs)
+        if: github.event_name == 'workflow_dispatch' && inputs.capture
+        run: |
+          SIM_NAME="$(xcrun simctl list devices available | grep -o 'iPhone [0-9]* Pro Max' | sort -V | tail -1)" scripts/mac-capture.sh captures
+          ls -la captures
       # Screenshots take most of the run (8 launches of 20 s plus simulator boot), so they only run
       # when asked: Actions → iOS app → Run workflow. Pushes and PRs just build and run the live check.
       - name: Simulator screenshots (manual runs)

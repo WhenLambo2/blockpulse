@@ -21,7 +21,7 @@ final class PulseModel {
         isLoading = true
         defer { isLoading = false }
         let settings = AppSettings.shared()
-        let client = settings.makeClient()
+        let client = settings.makeClient(transport: DemoMode.transport)
         let service = SnapshotService(client: client, store: SnapshotStore.appGroup())
         async let snapshot = service.load(reuseIfYoungerThan: 0)
         async let live = PulseExtras.load(client)
@@ -37,7 +37,7 @@ final class PulseModel {
     /// Refreshes every minute while the Pulse tab is on screen; cancelled with the view's task.
     func runLiveUpdates() async {
         while !Task.isCancelled {
-            try? await Task.sleep(for: Self.liveInterval)
+            try? await Task.sleep(for: DemoMode.liveInterval ?? Self.liveInterval)
             guard !Task.isCancelled else { return }
             await refresh(reloadWidgets: false)
         }

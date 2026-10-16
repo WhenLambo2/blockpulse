@@ -48,6 +48,18 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.lazet.blockpulse
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+  # Scripted Simulator takes for the launch film (scripts/mac-capture.sh). Not built by the app scheme.
+  BlockpulseCapture:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Capture
+    dependencies:
+      - target: Blockpulse
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lazet.blockpulse.capture
+        GENERATE_INFOPLIST_FILE: YES
   BlockpulseWidgets:
     type: app-extension
     platform: iOS
@@ -92,3 +104,12 @@ schemes:
         _XCWidgetKind: ""
         _XCWidgetDefaultView: timeline
         _XCWidgetFamily: systemSmall
+  BlockpulseCapture:
+    build:
+      targets:
+        Blockpulse: all
+        BlockpulseCapture: [test]
+    test:
+      config: Debug
+      targets:
+        - BlockpulseCapture

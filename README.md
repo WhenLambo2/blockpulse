@@ -16,6 +16,9 @@ Data: public `https://mempool.space` by default (no API key). Settings can switc
 - Simulator build: CI workflow `iOS app` on every PR. Screenshots only on a manual run (Actions, iOS app, Run workflow; `scripts/ci-screenshots.sh`), as a run artifact. On a Mac: `scripts/mac-screenshots.sh`
 - Regenerate project after editing `project.yml`: `xcodegen generate`
 
+## Security
+Report vulnerabilities privately, see [`SECURITY.md`](SECURITY.md).
+
 ## License and trademarks
 The code is MIT licensed (see `LICENSE`).
 The license covers the code only. The Blockpulse name, logo and app icon belong to Arterion Consultancy B.V. and are not licensed for reuse: a fork published to the App Store or elsewhere needs its own name and icon.

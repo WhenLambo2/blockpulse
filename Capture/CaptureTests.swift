@@ -84,15 +84,15 @@ final class CaptureTests: XCTestCase {
         }
     }
 
-    /// Charts: switch the price chart's period, then scrub across it with a finger.
+    /// Charts: switch the price chart's period, then scrub across it with a finger, slowly enough to read.
+    /// Both drags start inside the plot (it ends at about 0.84): from the axis labels a drag pages instead.
     func test4PriceScrub() {
         launch(["-selectedTab", "charts", "-chartsCategory", "favourites"])
         wait(4)
-        tapIfPresent("1Y"); wait(2)
-        tapIfPresent("5Y"); wait(2)
-        drag(from: CGVector(dx: 0.12, dy: 0.6), to: CGVector(dx: 0.88, dy: 0.6), velocity: 260, hold: 0.8, press: 0.35)
-        wait(1)
-        drag(from: CGVector(dx: 0.88, dy: 0.6), to: CGVector(dx: 0.45, dy: 0.6), velocity: 200, hold: 0.8, press: 0.35)
+        tapIfPresent("1Y"); wait(2.5)
+        drag(from: CGVector(dx: 0.1, dy: 0.6), to: CGVector(dx: 0.8, dy: 0.6), velocity: 140, hold: 0.8, press: 0.5)
+        wait(1.5)
+        drag(from: CGVector(dx: 0.8, dy: 0.6), to: CGVector(dx: 0.35, dy: 0.6), velocity: 120, hold: 0.8, press: 0.5)
         wait(2)
     }
 }

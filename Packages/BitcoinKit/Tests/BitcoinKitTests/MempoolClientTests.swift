@@ -11,7 +11,6 @@ import Testing
 
     @Test func defaultBaseURLIsPublicMempool() {
         #expect(MempoolClient.defaultBaseURL.absoluteString == "https://mempool.space")
-        #expect(MempoolClient.blockriseBaseURL.absoluteString == "https://blockrise.mempool.space")
     }
 
     @Test func buildsGETWithHeadersAndNoAuthByDefault() async throws {

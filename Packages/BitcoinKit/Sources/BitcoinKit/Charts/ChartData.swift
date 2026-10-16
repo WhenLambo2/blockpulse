@@ -111,22 +111,27 @@ public struct ChartResult: Sendable, Equatable {
 }
 
 public enum Downsample {
-    /// Averages consecutive points into at most `maxCount` buckets (first and last kept exact),
-    /// so long ranges stay smooth to draw and drag across.
+    /// Averages points into at most `maxCount` equal stretches of time (first and last kept exact),
+    /// so long ranges stay smooth to draw and drag across. Buckets are by time, not by count:
+    /// mempool's price history is hourly for recent years and sparser before, and equal-count buckets
+    /// squashed whole older years into a few averaged points (wrong values, drawn as a smooth curve).
     public static func bucketAverage(_ points: [ChartPoint], maxCount: Int = 240) -> [ChartPoint] {
         guard maxCount >= 3, points.count > maxCount else { return points }
-        let inner = Array(points.dropFirst().dropLast())
+        let inner = points.dropFirst().dropLast()
         let buckets = maxCount - 2
-        let size = Double(inner.count) / Double(buckets)
+        let start = points[0].date.timeIntervalSince1970
+        let span = points[points.count - 1].date.timeIntervalSince1970 - start
+        guard span > 0 else { return [points[0], points[points.count - 1]] }
+        var groups = [[ChartPoint]](repeating: [], count: buckets)
+        for point in inner {
+            let b = Int((point.date.timeIntervalSince1970 - start) / span * Double(buckets))
+            groups[min(max(b, 0), buckets - 1)].append(point)
+        }
         var out: [ChartPoint] = [points[0]]
         out.reserveCapacity(maxCount)
-        for b in 0..<buckets {
-            let start = Int((Double(b) * size).rounded(.down))
-            let end = min(inner.count, Int((Double(b + 1) * size).rounded(.down)))
-            guard end > start else { continue }
-            let slice = inner[start..<end]
+        for slice in groups where !slice.isEmpty {
             let n = Double(slice.count)
-            let mid = slice[slice.startIndex + slice.count / 2].date
+            let mid = slice[slice.count / 2].date
             let value = slice.reduce(0) { $0 + $1.value } / n
             let lows = slice.compactMap(\.low), highs = slice.compactMap(\.high)
             out.append(ChartPoint(
@@ -137,6 +142,28 @@ public enum Downsample {
             ))
         }
         out.append(points[points.count - 1])
+        return out
+    }
+
+    /// Exactly `count` points at evenly spaced moments from the first to the last date, read off the
+    /// line between neighbours. Two charts resampled to the same count can morph into each other point
+    /// by point (switching period), instead of points popping in and out.
+    public static func resample(_ points: [ChartPoint], count: Int) -> [ChartPoint] {
+        guard count >= 2, points.count >= 2 else { return points }
+        let start = points[0].date.timeIntervalSince1970
+        let span = points[points.count - 1].date.timeIntervalSince1970 - start
+        guard span > 0 else { return points }
+        var out: [ChartPoint] = []
+        out.reserveCapacity(count)
+        var j = 0
+        for i in 0..<count {
+            let t = start + span * Double(i) / Double(count - 1)
+            while j < points.count - 2 && points[j + 1].date.timeIntervalSince1970 < t { j += 1 }
+            let a = points[j], b = points[j + 1]
+            let ta = a.date.timeIntervalSince1970, tb = b.date.timeIntervalSince1970
+            let f = tb > ta ? min(max((t - ta) / (tb - ta), 0), 1) : 0
+            out.append(ChartPoint(date: Date(timeIntervalSince1970: t), value: a.value + (b.value - a.value) * f))
+        }
         return out
     }
 }

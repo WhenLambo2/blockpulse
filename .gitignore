@@ -12,3 +12,4 @@ Widgets/Info.plist
 App/*.entitlements
 Widgets/*.entitlements
 screenshots/
+captures/

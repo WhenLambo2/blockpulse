@@ -9,6 +9,11 @@ struct PulseView: View {
     @State private var dropTarget: HomeCard?
     /// Block number on screen. It trails the real tip so it rolls over when the celebration bursts.
     @State private var shownTip: Int?
+    /// While the old number is held for the celebration, the old block's time, so "since the last block"
+    /// resets together with the number instead of a second before it.
+    @State private var heldBlockDate: Date?
+    /// Only moved by code for marketing captures (`-demoAutoScroll`); people scroll as usual.
+    @State private var scrollPosition = ScrollPosition(edge: .top)
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppSettings.Keys.currency, store: AppSettings.sharedDefaults)
     private var currencyRaw = Currency.eur.rawValue
@@ -63,6 +68,7 @@ struct PulseView: View {
         .overlay {
             if model.isLoading && model.result == nil { ProgressView().tint(Theme.orange) }
         }
+        .scrollPosition($scrollPosition)
         .refreshable { await model.refresh() }
         .task { await model.refresh() }
         .task { await model.runLiveUpdates() }
@@ -72,6 +78,15 @@ struct PulseView: View {
             guard delay > 0 else { return }
             try? await Task.sleep(for: .seconds(delay))
             appState.celebrate()
+        }
+        .task {
+            // Captures: one even glide to the end of the page and back, drawn at the display's frame rate
+            // (a test's synthetic finger only moves 20 times a second, which shows as steps).
+            guard let delay = DemoMode.autoScrollAfter else { return }
+            try? await Task.sleep(for: .seconds(delay))
+            withAnimation(.easeInOut(duration: 2.6)) { scrollPosition.scrollTo(edge: .bottom) }
+            try? await Task.sleep(for: .seconds(4.2))
+            withAnimation(.smooth(duration: 1.1)) { scrollPosition.scrollTo(edge: .top) }
         }
         // Returning to the foreground refreshes (and, via refresh(), the widgets). Overlapping calls are dropped.
         .onChange(of: scenePhase) { _, phase in
@@ -133,7 +148,7 @@ struct PulseView: View {
                     }
                 }
             }
-            if let last = s.lastBlockDate {
+            if let last = heldBlockDate ?? s.lastBlockDate {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text("\(elapsed(since: last, now: context.date)) since the last block")
                         .font(.number(.subheadline, weight: .regular))
@@ -156,7 +171,10 @@ struct PulseView: View {
             if let old, new > old {
                 var still = Transaction()
                 still.disablesAnimations = true
-                withTransaction(still) { shownTip = old }  // keep the old number until the burst
+                withTransaction(still) {  // keep the old number until the burst
+                    shownTip = old
+                    heldBlockDate = s.blocks.first { $0.height == old }?.timestamp
+                }
                 rollTip(from: old, to: new)
             } else {
                 shownTip = new
@@ -177,6 +195,7 @@ struct PulseView: View {
             still.disablesAnimations = true
             withTransaction(still) { shownTip = from }
             try? await Task.sleep(for: .milliseconds(40))
+            heldBlockDate = nil
             withAnimation(.spring(duration: 0.8, bounce: 0.35)) { shownTip = to }
         }
     }

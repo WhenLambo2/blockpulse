@@ -3,14 +3,14 @@
 # Simulator (Capture/CaptureTests.swift). Real app, real scrolling, demo data so every take matches.
 # Usage: scripts/mac-capture.sh [out-dir]          (default: captures)
 #        SIM_NAME="iPhone 17 Pro Max" scripts/mac-capture.sh
-#        ONLY=test2HomeScroll scripts/mac-capture.sh   (re-record one take)
+#        ONLY="test2HomeScroll test3ChartsSwipe" scripts/mac-capture.sh   (re-record some takes)
 # Takes about 10 minutes. Close other heavy apps first: dropped frames show up in the recordings.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="${1:-captures}"
 BUNDLE=com.lazet.blockpulse
 TAKES=(test1HomeBlockFound test2HomeScroll test3ChartsSwipe test4PriceScrub)
-[ -n "${ONLY:-}" ] && TAKES=("$ONLY")
+[ -n "${ONLY:-}" ] && read -ra TAKES <<< "$ONLY"   # one or more take names, space separated
 
 command -v xcodegen >/dev/null || brew install xcodegen
 xcodegen generate

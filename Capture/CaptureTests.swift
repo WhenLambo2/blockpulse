@@ -57,16 +57,11 @@ final class CaptureTests: XCTestCase {
         wait(17)
     }
 
-    /// Home: one slow scroll from the top to the end of the page, then a flick back to the top.
-    /// The page is only about 400 points taller than the screen: more scrolling hits the end and bounces.
+    /// Home: one even glide from the top to the end of the page, then back to the top.
+    /// The app scrolls itself (`-demoAutoScroll`): a test's synthetic finger moves the page only 20 times a second.
     func test2HomeScroll() {
-        launch(["-selectedTab", "pulse"])
-        wait(4)
-        // The finger stops before lifting (hold), so the page glides at an even speed and doesn't fling past the end.
-        drag(from: CGVector(dx: 0.5, dy: 0.8), to: CGVector(dx: 0.5, dy: 0.36), velocity: 320, hold: 0.3)
-        wait(2.5)
-        drag(from: CGVector(dx: 0.5, dy: 0.3), to: CGVector(dx: 0.5, dy: 0.85), velocity: 2600)
-        wait(3)
+        launch(["-selectedTab", "pulse", "-demoAutoScroll", "4"])
+        wait(13)
     }
 
     /// Charts: swipe sideways from Market through Fees and Mempool to Mining, then up through the mining charts.

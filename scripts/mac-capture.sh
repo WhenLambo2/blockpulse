@@ -4,7 +4,7 @@
 # Usage: scripts/mac-capture.sh [out-dir]          (default: captures)
 #        SIM_NAME="iPhone 17 Pro Max" scripts/mac-capture.sh
 #        ONLY="test2HomeScroll test3ChartsSwipe" scripts/mac-capture.sh   (re-record some takes)
-# Takes about 10 minutes. Close other heavy apps first: dropped frames show up in the recordings.
+# Takes about 17 minutes. Close other heavy apps first: dropped frames show up in the recordings.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="${1:-captures}"
@@ -29,6 +29,9 @@ open -a Simulator --args -CurrentDeviceUDID "$UDID" || true
 xcrun simctl ui "$UDID" appearance dark
 xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 --operatorName ""
 xcrun simctl uninstall "$UDID" "$BUNDLE" 2>/dev/null || true
+# Demo data is kept in $OUT/demo-data, so takes recorded on different runs show the same numbers.
+# Delete that folder to record fresh data.
+DATA="$OUT/demo-data"
 
 DEST="platform=iOS Simulator,id=$UDID"
 mkdir -p build "$OUT"
@@ -45,12 +48,27 @@ run() {  # test name
 }
 failed=0
 
-echo "Warming up (records the demo data, about 4 minutes)..."
+if [ -d "$DATA" ]; then
+  echo "Reusing the demo data in $DATA"
+  xcrun simctl install "$UDID" build/capture/Build/Products/Debug-iphonesimulator/Blockpulse.app
+  CONTAINER=$(xcrun simctl get_app_container "$UDID" "$BUNDLE" data)
+  mkdir -p "$CONTAINER/Library/Caches"
+  rm -rf "$CONTAINER/Library/Caches/demo-data"
+  cp -R "$DATA" "$CONTAINER/Library/Caches/demo-data"
+fi
+echo "Warming up (draws every chart once; the first run also records the demo data, about 4 minutes)..."
 run test0WarmUp || true
+if [ ! -d "$DATA" ]; then
+  CONTAINER=$(xcrun simctl get_app_container "$UDID" "$BUNDLE" data 2>/dev/null || true)
+  if [ -n "$CONTAINER" ] && cp -R "$CONTAINER/Library/Caches/demo-data" "$DATA" 2>/dev/null; then
+    echo "  saved the demo data to $DATA"
+  fi
+fi
 
 for take in "${TAKES[@]}"; do
   echo "Recording $take..."
-  xcrun simctl io "$UDID" recordVideo --codec=h264 --mask=ignored --force "$OUT/$take.mp4" > /dev/null 2>&1 &
+  # HEVC: the H.264 takes bunched and dropped frames on busy moments at this size (1320x2868).
+  xcrun simctl io "$UDID" recordVideo --codec=hevc --mask=ignored --force "$OUT/$take.mp4" > /dev/null 2>&1 &
   rec=$!
   sleep 2
   run "$take" || true

@@ -12,6 +12,8 @@ struct PulseView: View {
     /// While the old number is held for the celebration, the old block's time, so "since the last block"
     /// resets together with the number instead of a second before it.
     @State private var heldBlockDate: Date?
+    /// Only moved by code for marketing captures (`-demoAutoScroll`); people scroll as usual.
+    @State private var scrollPosition = ScrollPosition(edge: .top)
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppSettings.Keys.currency, store: AppSettings.sharedDefaults)
     private var currencyRaw = Currency.eur.rawValue
@@ -66,6 +68,7 @@ struct PulseView: View {
         .overlay {
             if model.isLoading && model.result == nil { ProgressView().tint(Theme.orange) }
         }
+        .scrollPosition($scrollPosition)
         .refreshable { await model.refresh() }
         .task { await model.refresh() }
         .task { await model.runLiveUpdates() }
@@ -75,6 +78,15 @@ struct PulseView: View {
             guard delay > 0 else { return }
             try? await Task.sleep(for: .seconds(delay))
             appState.celebrate()
+        }
+        .task {
+            // Captures: one even glide to the end of the page and back, drawn at the display's frame rate
+            // (a test's synthetic finger only moves 20 times a second, which shows as steps).
+            guard let delay = DemoMode.autoScrollAfter else { return }
+            try? await Task.sleep(for: .seconds(delay))
+            withAnimation(.easeInOut(duration: 2.6)) { scrollPosition.scrollTo(edge: .bottom) }
+            try? await Task.sleep(for: .seconds(4.2))
+            withAnimation(.smooth(duration: 1.1)) { scrollPosition.scrollTo(edge: .top) }
         }
         // Returning to the foreground refreshes (and, via refresh(), the widgets). Overlapping calls are dropped.
         .onChange(of: scenePhase) { _, phase in

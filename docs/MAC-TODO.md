@@ -73,3 +73,13 @@ CI screenshots cover the three tabs; check these by hand on a device:
 ## Privacy link
 - [ ] Settings, About: "Privacy policy" opens https://blockpul.se/privacy in Safari, in dark and light.
 - [ ] App Store Connect, App Privacy: Privacy Policy URL is https://blockpul.se/privacy.
+
+## Explore tab (v3)
+
+CI builds it and the live check hits every Explore endpoint; these need a real iPhone:
+
+- [ ] QR scanner: first tap asks for the camera, a QR code with an address, txid or `bitcoin:` link shows the found card and opens the page; "Scan again" picks up the same code again; "From photo" reads a screenshot of a QR code.
+- [ ] QR sheet: "Save to Photos" asks for add-only photo access once and saves the card image; "Share QR" offers Save Image and AirDrop; the code scans back from another phone's camera (transaction codes open mempool.space).
+- [ ] Search: typing a partial `bc1q…` shows suggestions after a short pause; Return opens the top row; the paste button pastes without a permission alert.
+- [ ] Block strip opens centred on the dashed line; tapping a Recent blocks card on Blockpulse or a block in Charts switches to Explore with that block open.
+- [ ] `blockpulse://block/840000` opened from Safari or Notes lands on that block in Explore.

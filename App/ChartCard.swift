@@ -172,6 +172,9 @@ struct ChartCard: View {
             let loaded = try await ChartStore.loader.load(id, period: period, currency: currency, force: force)
             show(loaded)
             error = nil
+        } catch is CancellationError {
+            // A newer load (another period or chart) took over.
+            return
         } catch {
             self.error = (error as? MempoolError)?.userMessage ?? error.localizedDescription
             if result?.period != period || result?.id != id { result = nil }
@@ -505,12 +508,14 @@ struct ChartTableView: View {
 /// The latest blocks as a sideways row of block cards with their details, newest first.
 struct RecentBlocksView: View {
     let blocks: [Block]
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: 12) {
                 ForEach(blocks) { block in
-                    BlockDetailCard(block: block)
+                    Button { appState.open(.block(.hash(block.id))) } label: { BlockDetailCard(block: block) }
+                        .buttonStyle(.plain)
                 }
             }
             .padding(.vertical, 4)

@@ -59,6 +59,7 @@ import Testing
         #expect(Format.feeRate(12.6) == "13 sat/vB")
         #expect(Format.feeRate(0) == "0 sat/vB")
         #expect(Format.feeRateNumber(0.3465) == "0.35")
+        #expect(Format.feeRateNumber(3_604_819) == "3,604,819")
     }
 
     @Test func inlineSummary() {

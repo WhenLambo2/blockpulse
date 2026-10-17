@@ -5,7 +5,7 @@ import BitcoinKit
 @main
 struct BlockpulseApp: App {
     @AppStorage(AppPreferences.Keys.appearance) private var appearanceRaw = Appearance.dark.rawValue
-    /// Launch argument `-selectedTab charts` (or `settings`) opens that tab (used for CI screenshots).
+    /// Launch argument `-selectedTab charts` (or `explore`, `settings`) opens that tab (used for CI screenshots).
     @AppStorage("selectedTab") private var selectedTab = "pulse"
     @State private var appState = AppState()
 
@@ -34,6 +34,9 @@ struct BlockpulseApp: App {
                 PulseView()
                     .tabItem { Label("Blockpulse", systemImage: "waveform.path.ecg") }
                     .tag("pulse")
+                ExploreView()
+                    .tabItem { Label("Explore", systemImage: "magnifyingglass") }
+                    .tag("explore")
                 ChartsView()
                     .tabItem { Label("Charts", systemImage: "chart.xyaxis.line") }
                     .tag("charts")
@@ -47,6 +50,22 @@ struct BlockpulseApp: App {
             // preferredColorScheme(nil) doesn't hand control back to the system once a fixed
             // scheme was set, so the window's style is set directly as well.
             .onAppear { applyToWindows(appearance) }
+            // blockpulse://tx/…, /block/…, /address/… open on the Explore tab.
+            .onOpenURL { url in
+                if let route = ExploreRoute(url: url) { appState.open(route) }
+            }
+            // CI screenshots: `-openLink blockpulse://tx/…` opens that page on launch.
+            .task {
+                if let link = UserDefaults.standard.string(forKey: "openLink"),
+                   let url = URL(string: link), let route = ExploreRoute(url: url) {
+                    appState.open(route)
+                }
+            }
+            .onChange(of: appState.requestedTab) { _, tab in
+                guard let tab else { return }
+                selectedTab = tab
+                appState.requestedTab = nil
+            }
             .onChange(of: appearanceRaw) { _, _ in applyToWindows(appearance) }
         }
     }

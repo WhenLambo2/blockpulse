@@ -88,6 +88,52 @@ public struct MempoolClient: Sendable {
         try await get("/api/v1/mining/pools/\(period.apiValue)", timeout: Self.chartTimeout)
     }
 
+    // MARK: - Explore
+
+    public func tipHeight() async throws -> Int {
+        let text = try await getText("/api/blocks/tip/height")
+        guard let height = Int(text) else { throw MempoolError.decoding("tip height: \(text.prefix(40))") }
+        return height
+    }
+    public func transaction(_ txid: String) async throws -> BitcoinTx { try await get("/api/tx/\(txid)") }
+    public func outspends(_ txid: String) async throws -> [Outspend] { try await get("/api/tx/\(txid)/outspends") }
+    public func cpfp(_ txid: String) async throws -> CPFPInfo { try await get("/api/v1/cpfp/\(txid)") }
+    public func rbf(_ txid: String) async throws -> RBFInfo { try await get("/api/v1/tx/\(txid)/rbf") }
+
+    /// Block with pool and fee details (same shape as an element of /api/v1/blocks).
+    public func block(_ hash: String) async throws -> Block { try await get("/api/v1/block/\(hash)") }
+    public func blockHash(height: Int) async throws -> String {
+        let hash = try await getText("/api/block-height/\(height)")
+        guard hash.count == 64, hash.allSatisfy(\.isHexDigit) else { throw MempoolError.decoding("block hash: \(hash.prefix(40))") }
+        return hash
+    }
+    public func blockAt(timestamp: Int) async throws -> BlockAtTime {
+        try await get("/api/v1/mining/blocks/timestamp/\(timestamp)")
+    }
+    /// 25 transactions from `start` (a multiple of 25).
+    public func blockTransactions(_ hash: String, start: Int = 0) async throws -> [BitcoinTx] {
+        try await get("/api/block/\(hash)/txs/\(start)")
+    }
+    /// 15 blocks ending at `height` (newest first).
+    public func blocks(endingAt height: Int) async throws -> [Block] { try await get("/api/v1/blocks/\(height)") }
+
+    public func address(_ address: String) async throws -> AddressInfo { try await get("/api/address/\(address)") }
+    /// First page: pending transactions plus the newest 25 confirmed. Next pages: 25 confirmed after `lastSeen`.
+    public func addressTransactions(_ address: String, after lastSeen: String? = nil) async throws -> [BitcoinTx] {
+        if let lastSeen { return try await get("/api/address/\(address)/txs/chain/\(lastSeen)") }
+        return try await get("/api/address/\(address)/txs")
+    }
+    /// Up to 10 addresses starting with `prefix` (bech32 prefixes are sent in lower case).
+    /// The whole mempool with its fee histogram (heavier than `mempool()`, which the widgets use).
+    public func mempoolBacklog() async throws -> MempoolBacklog { try await get("/api/mempool") }
+    /// The last 10 transactions that entered the mempool.
+    public func recentMempoolTransactions() async throws -> [RecentMempoolTx] { try await get("/api/mempool/recent") }
+
+    public func addressPrefix(_ prefix: String) async throws -> [String] {
+        let p = prefix.lowercased().hasPrefix("bc1") ? prefix.lowercased() : prefix
+        return try await get("/api/address-prefix/\(p)")
+    }
+
     /// Times a prices request; used by the app's "Test connection" button.
     public func checkConnection() async -> ConnectionCheck {
         let clock = ContinuousClock()
@@ -102,9 +148,12 @@ public struct MempoolClient: Sendable {
     func makeRequest(path: String, query: [URLQueryItem] = [], timeout: TimeInterval? = nil) -> URLRequest {
         var base = baseURL.absoluteString
         while base.hasSuffix("/") { base.removeLast() }
-        var components = URLComponents(string: base + path)!
+        // Paths carry user input (addresses, prefixes), so they are encoded rather than trusted.
+        let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
+        var components = URLComponents(string: base + encoded) ?? URLComponents(url: baseURL, resolvingAgainstBaseURL: false) ?? URLComponents()
         if !query.isEmpty { components.queryItems = query }
-        var request = URLRequest(url: components.url!, timeoutInterval: max(timeout ?? self.timeout, self.timeout))
+        let url = components.url ?? baseURL
+        var request = URLRequest(url: url, timeoutInterval: max(timeout ?? self.timeout, self.timeout))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
@@ -113,6 +162,21 @@ public struct MempoolClient: Sendable {
     }
 
     private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = [], timeout: TimeInterval? = nil) async throws -> T {
+        let data = try await send(path, query: query, timeout: timeout)
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            throw MempoolError.decoding(String(describing: error))
+        }
+    }
+
+    /// Plain-text endpoints (a hash or a number).
+    private func getText(_ path: String) async throws -> String {
+        let data = try await send(path, query: [], timeout: nil)
+        return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func send(_ path: String, query: [URLQueryItem], timeout: TimeInterval?) async throws -> Data {
         let request = makeRequest(path: path, query: query, timeout: timeout)
         let data: Data
         let response: HTTPURLResponse
@@ -120,6 +184,11 @@ public struct MempoolClient: Sendable {
             (data, response) = try await transport.send(request)
         } catch let error as MempoolError {
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            // A page that moved on cancelled its request: not a network problem to show.
+            throw CancellationError()
         } catch {
             throw MempoolError.network(error.localizedDescription)
         }
@@ -129,10 +198,6 @@ public struct MempoolClient: Sendable {
         case 429: throw MempoolError.rateLimited
         default: throw MempoolError.http(response.statusCode)
         }
-        do {
-            return try JSONDecoder().decode(T.self, from: data)
-        } catch {
-            throw MempoolError.decoding(String(describing: error))
-        }
+        return data
     }
 }

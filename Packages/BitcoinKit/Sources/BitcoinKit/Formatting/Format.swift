@@ -3,13 +3,22 @@ import Foundation
 /// All user-facing number formatting. Fixed en_US grouping so widgets and tests are deterministic.
 public enum Format {
     public static func grouped(_ value: Double, fractionDigits: Int = 0) -> String {
+        let f = fractionDigits < groupedFormatters.count ? groupedFormatters[fractionDigits] : makeGrouped(fractionDigits)
+        return f.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    /// Building a NumberFormatter is slow and lists format hundreds of numbers per refresh, so the
+    /// common ones are made once. Formatting with a configured formatter is thread-safe.
+    nonisolated(unsafe) private static let groupedFormatters: [NumberFormatter] = (0...8).map(makeGrouped)
+
+    private static func makeGrouped(_ fractionDigits: Int) -> NumberFormatter {
         let f = NumberFormatter()
         f.locale = Locale(identifier: "en_US")
         f.numberStyle = .decimal
         f.minimumFractionDigits = fractionDigits
         f.maximumFractionDigits = fractionDigits
         f.roundingMode = .halfUp
-        return f.string(from: NSNumber(value: value)) ?? String(value)
+        return f
     }
 
     /// "€73,984"
@@ -44,12 +53,14 @@ public enum Format {
 
     public static func sats(_ value: Int) -> String { grouped(Double(value)) + " sats" }
 
-    /// < 1: two decimals trimmed ("0.35", "0.1"); 1–10: one decimal trimmed ("2.2", "1"); ≥ 10: integer.
+    /// < 1: two decimals trimmed ("0.35", "0.1"); 1–10: one decimal trimmed ("2.2", "1"); ≥ 10: integer,
+    /// grouped from 1,000 up ("3,604,819").
     public static func feeRateNumber(_ value: Double) -> String {
         if value <= 0 { return "0" }
         if value < 1 { return trimmed(String(format: "%.2f", value)) }
         if value < 10 { return trimmed(String(format: "%.1f", value)) }
-        return String(Int(value.rounded()))
+        if value < 1000 { return String(Int(value.rounded())) }
+        return grouped(value.rounded())
     }
 
     public static func feeRate(_ value: Double) -> String { feeRateNumber(value) + " sat/vB" }

@@ -44,7 +44,11 @@ public struct AppPreferences {
         public static let favourites = "chartFavourites"
         public static let homeCardOrder = "homeCardOrder"
         public static let feeTilesShowFiat = "feeTilesShowFiat"
+        public static let recentSearches = "recentSearches"
+        public static let remembersSearches = "remembersSearches"
     }
+
+    public static let recentSearchLimit = 10
 
     private let defaults: UserDefaults
 
@@ -72,6 +76,33 @@ public struct AppPreferences {
     public var homeCardOrder: [HomeCard] {
         get { HomeCard.ordered(defaults.stringArray(forKey: Keys.homeCardOrder) ?? []) }
         nonmutating set { defaults.set(HomeCard.ordered(newValue.map(\.rawValue)).map(\.rawValue), forKey: Keys.homeCardOrder) }
+    }
+
+    /// On unless switched off in Settings.
+    public var remembersSearches: Bool {
+        get { defaults.object(forKey: Keys.remembersSearches) as? Bool ?? true }
+        nonmutating set {
+            defaults.set(newValue, forKey: Keys.remembersSearches)
+            if !newValue { recentSearches = [] }
+        }
+    }
+
+    /// Newest first, at most ten, stored on this device only. Unreadable entries are dropped.
+    public var recentSearches: [ExploreRoute] {
+        get {
+            (defaults.stringArray(forKey: Keys.recentSearches) ?? []).compactMap { URL(string: $0).flatMap(ExploreRoute.init(url:)) }
+        }
+        nonmutating set {
+            var seen = Set<String>()
+            let links = newValue.compactMap { $0.deepLink?.absoluteString }.filter { seen.insert($0).inserted }
+            defaults.set(Array(links.prefix(Self.recentSearchLimit)), forKey: Keys.recentSearches)
+        }
+    }
+
+    /// Puts `route` on top; does nothing while remembering is off.
+    public func remember(_ route: ExploreRoute) {
+        guard remembersSearches, route.deepLink != nil else { return }
+        recentSearches = [route] + recentSearches
     }
 
     public func isFavourite(_ id: ChartID) -> Bool { favourites.contains(id) }

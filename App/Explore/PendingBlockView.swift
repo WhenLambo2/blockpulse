@@ -52,7 +52,7 @@ struct PendingBlockView: View {
             }
         }
         .task {
-            price = Explore.cachedPrice()
+            if price == nil { price = Explore.cachedPrice() }
             await load()
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.pollInterval)
@@ -66,6 +66,8 @@ struct PendingBlockView: View {
         do {
             projected = try await Explore.client().projectedBlocks()
             error = nil
+        } catch is CancellationError {
+            return
         } catch {
             if projected.isEmpty { self.error = Explore.failure(error) }
         }

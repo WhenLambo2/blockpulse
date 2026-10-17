@@ -2,7 +2,7 @@ import SwiftUI
 import BitcoinKit
 
 /// Explore tab: search like mempool.space (block height or hash, transaction, address, date), a QR
-/// scanner, and the live strip of pending and mined blocks with the latest blocks below it.
+/// scanner, the live strip of pending and mined blocks, and a mempool overview below it.
 struct ExploreView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.scenePhase) private var scenePhase
@@ -14,7 +14,8 @@ struct ExploreView: View {
     @State private var showScanner = false
     @State private var recents: [ExploreRoute] = []
 
-    private var interpretation: SearchInterpretation { SearchParser.interpret(text, tip: model.tip) }
+    /// Worked out once per edit rather than on every redraw.
+    @State private var interpretation = SearchParser.interpret("", tip: nil)
     private var searching: Bool { focused || !text.isEmpty }
 
     var body: some View {
@@ -38,15 +39,21 @@ struct ExploreView: View {
             }
             .background(Theme.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: ExploreRoute.self) { ExploreDestination(route: $0) }
-            .sheet(isPresented: $showScanner) {
+            .navigationDestination(for: ExploreRoute.self) { ExploreDestination(route: $0, model: model) }
+            .fullScreenCover(isPresented: $showScanner) {
                 QRScannerSheet(tip: model.tip) { route in navigate(to: route) }
             }
         }
         .tint(Theme.orange)
         .task { await model.refresh() }
-        .task { await model.runLiveUpdates() }
+        // Live updates pause while a detail page is open; that page refreshes itself.
+        .task(id: appState.explorePath.isEmpty) {
+            guard appState.explorePath.isEmpty else { return }
+            await model.runLiveUpdates()
+        }
         .task(id: text) { await lookUpPrefix() }
+        .onChange(of: text, initial: true) { _, new in interpretation = SearchParser.interpret(new, tip: model.tip) }
+        .onChange(of: model.tip) { _, tip in interpretation = SearchParser.interpret(text, tip: tip) }
         .onAppear { recents = AppPreferences().recentSearches }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await model.refresh() } }
@@ -229,6 +236,7 @@ struct ExploreView: View {
         case .transaction(let txid, _): Format.short(txid, head: 12, tail: 8)
         case .address(let a): Format.short(a, head: 14, tail: 8)
         case .pendingBlock(let i): i == 0 ? "Next block" : "Pending block \(i + 1)"
+        case .latestBlocks: "All blocks"
         }
     }
 
@@ -238,6 +246,7 @@ struct ExploreView: View {
         case .transaction: "arrow.left.arrow.right"
         case .address: "bitcoinsign.circle"
         case .pendingBlock: "hourglass"
+        case .latestBlocks: "square.stack.3d.up"
         }
     }
 
@@ -269,7 +278,7 @@ struct ExploreView: View {
         let i = interpretation
         if let target = i.target {
             navigate(to: target.route)
-        } else if let first = suggestions.first {
+        } else if let first = suggestions.first, first.lowercased().hasPrefix(i.query.lowercased()) {
             navigate(to: .address(first))
         }
     }
@@ -291,7 +300,9 @@ struct ExploreView: View {
     /// Up to ten known addresses starting with the text, 200 ms after the last keystroke.
     private func lookUpPrefix() async {
         isLookingUp = false
-        let i = interpretation
+        let i = SearchParser.interpret(text, tip: model.tip)
+        // Suggestions for an earlier prefix go at once, so Return can't open one of them.
+        suggestions = suggestions.filter { $0.lowercased().hasPrefix(i.query.lowercased()) }
         guard i.allowsPrefixLookup else {
             suggestions = []
             return
@@ -315,26 +326,10 @@ struct ExploreView: View {
         }
         if !model.blocks.isEmpty || !model.projected.isEmpty {
             BlockStrip(projected: model.projected, blocks: Array(model.blocks.prefix(8)))
+            MempoolOverview(model: model)
+            DataCredit()
         } else if model.isLoading {
             ProgressView().tint(Theme.orange).padding(.top, 60)
-        }
-        if !model.blocks.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                SectionLabel("Latest blocks").padding(.bottom, 6)
-                LazyVStack(spacing: 0) {
-                    ForEach(model.blocks) { block in
-                        RouteRow(route: .block(.hash(block.id))) { LatestBlockRow(block: block) }
-                            .onAppear {
-                                if block.id == model.blocks.last?.id { Task { await model.loadMore() } }
-                            }
-                        if block.id != model.blocks.last?.id { Divider().overlay(Theme.border) }
-                    }
-                }
-                if model.isLoadingMore {
-                    ProgressView().tint(Theme.orange).frame(maxWidth: .infinity).padding(.top, 10)
-                }
-            }
-            .card()
         }
     }
 }
@@ -349,6 +344,9 @@ struct BlockStrip: View {
     let projected: [ProjectedBlock]
     let blocks: [Block]
     private static let now = "now"
+    @ScaledMetric(relativeTo: .subheadline) private var cubeHeight: CGFloat = 104
+    /// While the strip is being dragged or is still gliding, a new block doesn't pull it back to "now".
+    @State private var scrolling = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -368,18 +366,24 @@ struct BlockStrip: View {
                         }
                         Line()
                             .stroke(Theme.orange.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
-                            .frame(width: 2, height: 104)
+                            .frame(width: 2, height: cubeHeight)
                             .id(Self.now)
                         ForEach(blocks) { block in
                             NavigationLink(value: ExploreRoute.block(.hash(block.id))) { MinedCube(block: block) }
                                 .buttonStyle(.plain)
                         }
+                        if !blocks.isEmpty {
+                            NavigationLink(value: ExploreRoute.latestBlocks) { AllBlocksTile() }
+                                .buttonStyle(.plain)
+                        }
                     }
                     .padding(.vertical, 2)
                 }
+                .onScrollPhaseChange { _, phase in scrolling = phase != .idle }
                 .onAppear { proxy.scrollTo(Self.now, anchor: .center) }
-                .onChange(of: projected.count) { _, _ in proxy.scrollTo(Self.now, anchor: .center) }
+                .onChange(of: projected.isEmpty) { _, _ in proxy.scrollTo(Self.now, anchor: .center) }
                 .onChange(of: blocks.first?.id) { _, _ in
+                    guard !scrolling else { return }
                     withAnimation(.snappy) { proxy.scrollTo(Self.now, anchor: .center) }
                 }
             }
@@ -406,6 +410,8 @@ struct BlockStrip: View {
 struct PendingCube: View {
     let block: ProjectedBlock
     let index: Int
+    @ScaledMetric(relativeTo: .subheadline) private var width: CGFloat = 96
+    @ScaledMetric(relativeTo: .subheadline) private var height: CGFloat = 104
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -419,11 +425,16 @@ struct PendingCube: View {
         }
         .foregroundStyle(Color(hex: 0x1A1206))
         .padding(9)
-        .frame(width: 96, height: 104, alignment: .leading)
+        .frame(width: width, height: height, alignment: .leading)
         .background(
+            // A solid base keeps the dark text readable on the cheapest (faintest) blocks.
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.orange, Theme.orangeDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .opacity(Theme.feeIntensity(block.medianFee))
+                .fill(Theme.orangeDeep.opacity(0.85))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(LinearGradient(colors: [Theme.orange, Theme.orangeMid], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .opacity(Theme.feeIntensity(block.medianFee))
+                )
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(index == 0 ? "Next block" : "Pending block \(index + 1)")
@@ -433,6 +444,8 @@ struct PendingCube: View {
 
 struct MinedCube: View {
     let block: Block
+    @ScaledMetric(relativeTo: .subheadline) private var width: CGFloat = 96
+    @ScaledMetric(relativeTo: .subheadline) private var height: CGFloat = 104
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -448,11 +461,32 @@ struct MinedCube: View {
                 .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
         }
         .padding(9)
-        .frame(width: 96, height: 104, alignment: .leading)
+        .frame(width: width, height: height, alignment: .leading)
         .background(Theme.cardRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.border))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Block \(block.height)")
+    }
+}
+
+/// The end of the strip: opens the full block list.
+struct AllBlocksTile: View {
+    @ScaledMetric(relativeTo: .subheadline) private var height: CGFloat = 104
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "square.stack.3d.up").font(.title3)
+            Text("All blocks").font(.caption.weight(.semibold)).multilineTextAlignment(.center)
+        }
+        .foregroundStyle(Theme.orange)
+        .frame(width: 76, height: height)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Theme.orange.opacity(0.55), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+        )
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -479,6 +513,7 @@ struct LatestBlockRow: View {
 /// The page for a route, used by the Explore stack.
 struct ExploreDestination: View {
     let route: ExploreRoute
+    let model: ExploreModel
 
     var body: some View {
         switch route {
@@ -486,6 +521,7 @@ struct ExploreDestination: View {
         case .block(let ref): BlockView(ref: ref)
         case .address(let address): AddressView(address: address)
         case .pendingBlock(let index): PendingBlockView(index: index)
+        case .latestBlocks: LatestBlocksView(model: model)
         }
     }
 }

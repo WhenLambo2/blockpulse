@@ -14,6 +14,8 @@ struct AddressView: View {
     @State private var price: PriceInfo?
     @State private var error: MempoolError?
     @State private var loadingMore = false
+    @State private var loadMoreFailed = false
+    @State private var loadedAt: Date?
     @State private var reachedEnd = false
     @State private var showQR = false
 
@@ -44,8 +46,9 @@ struct AddressView: View {
                         shareURL: route.webURL(base: Explore.webBase))
         }
         .task {
-            price = Explore.cachedPrice()
-            await load()
+            if price == nil { price = Explore.cachedPrice() }
+            // Coming back from a transaction opened from here: only reload when it's been a while.
+            if loadedAt.map({ Date().timeIntervalSince($0) > 30 }) ?? true { await load() }
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.pollInterval)
                 guard !Task.isCancelled else { return }
@@ -69,6 +72,9 @@ struct AddressView: View {
             tip = await height ?? tip
             info = fresh
             error = nil
+            loadedAt = Date()
+        } catch is CancellationError {
+            return
         } catch {
             if info == nil { self.error = Explore.failure(error) }
         }
@@ -77,8 +83,15 @@ struct AddressView: View {
     private func loadMore() async {
         guard !loadingMore, !reachedEnd, let last = txs.last(where: \.status.confirmed) else { return }
         loadingMore = true
+        loadMoreFailed = false
         defer { loadingMore = false }
-        guard let more = try? await Explore.client().addressTransactions(address, after: last.txid) else { return }
+        let more: [BitcoinTx]
+        do {
+            more = try await Explore.client().addressTransactions(address, after: last.txid)
+        } catch {
+            if !(error is CancellationError) { loadMoreFailed = true }
+            return
+        }
         let ids = Set(txs.map(\.txid))
         txs += more.filter { !ids.contains($0.txid) }
         if more.count < Self.pageSize { reachedEnd = true }
@@ -128,6 +141,13 @@ struct AddressView: View {
                 }
                 if loadingMore {
                     ProgressView().tint(Theme.orange).frame(maxWidth: .infinity).padding(.top, 10)
+                } else if loadMoreFailed {
+                    Button { Task { await loadMore() } } label: {
+                        Label("Couldn't load more · Retry", systemImage: "arrow.clockwise")
+                            .font(.footnote.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 10)
+                    }
                 }
             }
             .card()

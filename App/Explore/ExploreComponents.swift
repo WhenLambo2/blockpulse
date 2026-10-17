@@ -1,4 +1,5 @@
 import SwiftUI
+import LinkPresentation
 import UIKit
 import BitcoinKit
 
@@ -187,10 +188,87 @@ struct ShareTools: ToolbarContent {
             Button { showQR = true } label: { Image(systemName: "qrcode") }
                 .accessibilityLabel("Show QR code")
             if let url = route.webURL(base: Explore.webBase) {
-                ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
-                    .accessibilityLabel("Share")
+                Button { Share.link(url, title: qrTitle + " " + Format.short(route.searchText)) } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Share")
             }
         }
+    }
+}
+
+/// The system share sheet, opened straight away. For links, Blockpulse hands over the title and
+/// icon itself; with a bare URL iOS first downloads the page to build a preview, which on
+/// mempool.space takes seconds.
+@MainActor
+enum Share {
+    static func link(_ url: URL, title: String) {
+        present([LinkItem(url: url, title: title, icon: icon)])
+    }
+
+    static func image(_ image: UIImage, title: String) {
+        present([ImageItem(image: image, title: title)])
+    }
+
+    private static func present(_ items: [Any]) {
+        guard let top = topController() else { return }
+        let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        sheet.popoverPresentationController?.sourceView = top.view
+        sheet.popoverPresentationController?.sourceRect = CGRect(x: top.view.bounds.maxX - 40, y: 40, width: 1, height: 1)
+        top.present(sheet, animated: true)
+    }
+
+    private static func topController() -> UIViewController? {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed { top = presented }
+        return top
+    }
+
+    /// The app icon, drawn once, for link previews.
+    private static let icon: UIImage? = {
+        let renderer = ImageRenderer(content: BlockpulseLogo(size: 120))
+        renderer.scale = 2
+        return renderer.uiImage
+    }()
+}
+
+/// The preview the share sheet shows, so it doesn't fetch one from the web.
+private func shareMetadata(title: String, url: URL?, image: UIImage?) -> LPLinkMetadata {
+    let metadata = LPLinkMetadata()
+    metadata.title = title
+    if let url { metadata.originalURL = url; metadata.url = url }
+    if let image { metadata.iconProvider = NSItemProvider(object: image) }
+    return metadata
+}
+
+private final class LinkItem: NSObject, UIActivityItemSource {
+    let url: URL
+    let title: String
+    let icon: UIImage?
+    init(url: URL, title: String, icon: UIImage?) { self.url = url; self.title = title; self.icon = icon }
+
+    func activityViewControllerPlaceholderItem(_ controller: UIActivityViewController) -> Any { url }
+    func activityViewController(_ controller: UIActivityViewController, itemForActivityType type: UIActivity.ActivityType?) -> Any? { url }
+    func activityViewController(_ controller: UIActivityViewController, subjectForActivityType type: UIActivity.ActivityType?) -> String { title }
+    func activityViewControllerLinkMetadata(_ controller: UIActivityViewController) -> LPLinkMetadata? {
+        shareMetadata(title: title, url: url, image: icon)
+    }
+}
+
+private final class ImageItem: NSObject, UIActivityItemSource {
+    let image: UIImage
+    let title: String
+    init(image: UIImage, title: String) { self.image = image; self.title = title }
+
+    func activityViewControllerPlaceholderItem(_ controller: UIActivityViewController) -> Any { image }
+    func activityViewController(_ controller: UIActivityViewController, itemForActivityType type: UIActivity.ActivityType?) -> Any? { image }
+    func activityViewController(_ controller: UIActivityViewController, subjectForActivityType type: UIActivity.ActivityType?) -> String { title }
+    func activityViewControllerLinkMetadata(_ controller: UIActivityViewController) -> LPLinkMetadata? {
+        shareMetadata(title: title, url: nil, image: image)
     }
 }
 
@@ -204,6 +282,7 @@ struct RouteRow<Content: View>: View {
             HStack(spacing: 10) {
                 label()
                 Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
             .contentShape(Rectangle())
         }

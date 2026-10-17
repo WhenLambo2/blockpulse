@@ -77,6 +77,10 @@ struct LiveSmokeTests {
             _ = try await c.addressTransactions(address, after: last.txid)
         }
         #expect(try await c.addressPrefix("bc1qm34lsc65").contains(address))
+
+        let backlog = try await c.mempoolBacklog()
+        #expect(backlog.count > 0 && !backlog.feeHistogram.isEmpty)
+        #expect(!(try await c.recentMempoolTransactions()).isEmpty)
     }
 
     @Test func pulseExtras() async {

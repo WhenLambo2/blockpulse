@@ -139,6 +139,41 @@ import Testing
     }
 }
 
+@Suite struct MempoolOverviewTests {
+    @Test func feeBands() throws {
+        let json = #"{"count":3,"vsize":600,"total_fee":900,"fee_histogram":[[25.5,100],[10,50],[4.2,150],[1.5,200],[0.3,100]]}"#
+        let backlog = try JSONDecoder().decode(MempoolBacklog.self, from: Data(json.utf8))
+        let bands = backlog.bands()
+        #expect(bands.map(\.label) == ["<1", "1–2", "2–4", "4–10", "10+"])
+        #expect(bands.map(\.vsize) == [100, 200, 0, 150, 150])
+        #expect(backlog.blocksToClear == 1)
+    }
+
+    @Test func histogramIsOptional() throws {
+        let backlog = try JSONDecoder().decode(MempoolBacklog.self, from: Data(#"{"count":1,"vsize":2}"#.utf8))
+        #expect(backlog.feeHistogram.isEmpty)
+        #expect(backlog.bands().allSatisfy { $0.vsize == 0 })
+    }
+
+    @Test func recentTransactions() throws {
+        let json = #"[{"txid":"ab","fee":420,"vsize":140.25,"value":125000}]"#
+        let txs = try JSONDecoder().decode([RecentMempoolTx].self, from: Data(json.utf8))
+        #expect(txs.first?.value == 125_000)
+        #expect(abs((txs.first?.feeRate ?? 0) - 2.9946) < 0.001)
+    }
+
+    @Test func cancelledRequestsAreNotNetworkErrors() async {
+        let transport = FakeTransport()
+        transport.failure = URLError(.cancelled)
+        await #expect(throws: CancellationError.self) { try await MempoolClient(transport: transport).tipHeight() }
+    }
+
+    @Test func userInputInPathsIsEncoded() {
+        let request = MempoolClient(transport: FakeTransport()).makeRequest(path: "/api/address/éé")
+        #expect(request.url?.absoluteString.hasSuffix("/api/address/%C3%A9%C3%A9") == true)
+    }
+}
+
 @Suite struct RecentSearchesTests {
     let defaults = UserDefaults(suiteName: "blockpulse-recent-\(UUID().uuidString)")!
     var prefs: AppPreferences { AppPreferences(defaults: defaults) }

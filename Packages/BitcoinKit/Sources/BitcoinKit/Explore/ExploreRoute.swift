@@ -16,6 +16,8 @@ public enum ExploreRoute: Hashable, Sendable {
     case address(String)
     /// 0 is the next block.
     case pendingBlock(Int)
+    /// Every mined block, newest first.
+    case latestBlocks
 
     public static let scheme = "blockpulse"
 
@@ -28,18 +30,20 @@ public enum ExploreRoute: Hashable, Sendable {
         case .block(.timestamp(let seconds)): String(seconds)
         case .address(let address): address
         case .pendingBlock(let index): "pending:\(index)"
+        case .latestBlocks: "blocks"
         }
     }
 
-    /// `blockpulse://tx/<txid>`, `blockpulse://block/<hash or height>`, `blockpulse://address/<address>`.
+    /// `blockpulse://tx/<txid>[?output=n]`, `blockpulse://block/<hash or height>`, `blockpulse://address/<address>`.
     public var deepLink: URL? {
         switch self {
-        case .transaction(let txid, _): URL(string: "\(Self.scheme)://tx/\(txid)")
+        case .transaction(let txid, let output): URL(string: "\(Self.scheme)://tx/\(txid)" + (output.map { "?output=\($0)" } ?? ""))
         case .block(.hash(let h)): URL(string: "\(Self.scheme)://block/\(h)")
         case .block(.height(let h)): URL(string: "\(Self.scheme)://block/\(h)")
         case .block(.timestamp(let t)): URL(string: "\(Self.scheme)://block-at/\(t)")
         case .address(let a): URL(string: "\(Self.scheme)://address/\(a)")
         case .pendingBlock(let i): URL(string: "\(Self.scheme)://mempool-block/\(i)")
+        case .latestBlocks: URL(string: "\(Self.scheme)://blocks")
         }
     }
 
@@ -55,6 +59,7 @@ public enum ExploreRoute: Hashable, Sendable {
         case .block(.timestamp): return nil
         case .address(let a): return URL(string: "\(root)/address/\(a)")
         case .pendingBlock(let i): return URL(string: "\(root)/mempool-block/\(i)")
+        case .latestBlocks: return URL(string: "\(root)/blocks")
         }
     }
 
@@ -64,8 +69,17 @@ public enum ExploreRoute: Hashable, Sendable {
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let kind = components.host?.lowercased() else { return nil }
         let value = components.path.split(separator: "/").first.map(String.init)
+        if kind == "blocks" && value == nil {
+            self = .latestBlocks
+            return
+        }
         guard let route = Self.route(kind: kind, value: value) else { return nil }
-        self = route
+        if case .transaction(let txid, nil) = route,
+           let output = components.queryItems?.first(where: { $0.name == "output" })?.value.flatMap(Int.init), output >= 0 {
+            self = .transaction(txid, output: output)
+        } else {
+            self = route
+        }
     }
 
     /// Parses an explorer link such as `https://mempool.space/tx/<txid>` or
@@ -102,7 +116,7 @@ public enum ExploreRoute: Hashable, Sendable {
             if let height = Int(value), height >= 0 { return .block(.height(height)) }
             return nil
         case "address":
-            return value.count >= 14 && value.count <= 100 && value.allSatisfy({ $0.isLetter || $0.isNumber })
+            return value.count >= 14 && value.count <= 100 && value.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) })
                 ? .address(value) : nil
         case "block-at":
             return Int(value).map { .block(.timestamp($0)) }

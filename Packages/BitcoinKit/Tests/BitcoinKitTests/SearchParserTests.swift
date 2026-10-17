@@ -123,12 +123,20 @@ import Testing
 
     @Test func deepLinksRoundTrip() throws {
         let routes: [ExploreRoute] = [
-            .transaction(txid, output: nil), .block(.hash(SearchParserTests.genesisHash)), .block(.height(840_000)),
-            .block(.timestamp(1_231_006_505)), .address(SearchParserTests.taproot), .pendingBlock(2),
+            .transaction(txid, output: nil), .transaction(txid, output: 3), .block(.hash(SearchParserTests.genesisHash)), .block(.height(840_000)),
+            .block(.timestamp(1_231_006_505)), .address(SearchParserTests.taproot), .pendingBlock(2), .latestBlocks,
         ]
         for route in routes {
             let link = try #require(route.deepLink)
             #expect(ExploreRoute(url: link) == route, "\(link)")
+        }
+    }
+
+    @Test func addressLinksOnlyTakeAddressCharacters() {
+        #expect(ExploreRoute(url: URL(string: "blockpulse://address/\(SearchParserTests.taproot)")!) == .address(SearchParserTests.taproot))
+        let accented = "blockpulse://address/" + String(repeating: "é", count: 20)
+        if let url = URL(string: accented) ?? URL(string: accented.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!) {
+            #expect(ExploreRoute(url: url) == nil)
         }
     }
 

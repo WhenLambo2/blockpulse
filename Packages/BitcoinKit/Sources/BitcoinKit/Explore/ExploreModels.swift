@@ -242,6 +242,85 @@ public enum PendingPosition {
     public static func minutes(index: Int) -> Int { (index + 1) * 10 }
 }
 
+/// GET /api/mempool with its fee histogram.
+public struct MempoolBacklog: Decodable, Sendable, Equatable {
+    public let count: Int
+    public let vsize: Int
+    public let totalFee: Int
+    /// `[fee rate, vsize]` pairs, highest fee rate first. Each pair is the vsize of transactions paying
+    /// at most that rate and more than the next pair's rate.
+    public let feeHistogram: [[Double]]
+
+    public init(count: Int, vsize: Int, totalFee: Int, feeHistogram: [[Double]]) {
+        self.count = count; self.vsize = vsize; self.totalFee = totalFee; self.feeHistogram = feeHistogram
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case count, vsize, totalFee = "total_fee", feeHistogram = "fee_histogram"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        count = try c.decode(Int.self, forKey: .count)
+        vsize = try c.decode(Int.self, forKey: .vsize)
+        totalFee = try c.decodeIfPresent(Int.self, forKey: .totalFee) ?? 0
+        feeHistogram = try c.decodeIfPresent([[Double]].self, forKey: .feeHistogram) ?? []
+    }
+
+    /// Roughly how many full blocks (1 MvB) the mempool would fill.
+    public var blocksToClear: Int { Int((Double(vsize) / 1_000_000).rounded(.up)) }
+
+    /// The mempool split into fee-rate bands, cheapest first. `edges` are the band limits in sat/vB:
+    /// `[1, 2, 4, 10]` gives below 1, 1–2, 2–4, 4–10 and 10 and up.
+    public func bands(edges: [Double] = FeeBand.defaultEdges) -> [FeeBand] {
+        var sizes = Array(repeating: 0.0, count: edges.count + 1)
+        for pair in feeHistogram where pair.count >= 2 {
+            let index = edges.firstIndex(where: { pair[0] < $0 }) ?? edges.count
+            sizes[index] += pair[1]
+        }
+        return sizes.indices.map { i in
+            FeeBand(lower: i == 0 ? nil : edges[i - 1], upper: i < edges.count ? edges[i] : nil, vsize: sizes[i])
+        }
+    }
+}
+
+/// Part of the mempool paying between two fee rates.
+public struct FeeBand: Sendable, Equatable, Identifiable {
+    public static let defaultEdges: [Double] = [1, 2, 4, 10]
+
+    public let lower: Double?
+    public let upper: Double?
+    public let vsize: Double
+
+    public var id: String { label }
+
+    /// "<1", "1–2", "10+"
+    public var label: String {
+        switch (lower, upper) {
+        case (nil, let upper?): "<" + Format.feeRateNumber(upper)
+        case (let lower?, let upper?): Format.feeRateNumber(lower) + "–" + Format.feeRateNumber(upper)
+        case (let lower?, nil): Format.feeRateNumber(lower) + "+"
+        case (nil, nil): "all"
+        }
+    }
+}
+
+/// An element of GET /api/mempool/recent.
+public struct RecentMempoolTx: Codable, Sendable, Equatable, Identifiable {
+    public let txid: String
+    public let fee: Int
+    public let vsize: Double
+    /// Total output value in sats.
+    public let value: Int
+
+    public init(txid: String, fee: Int, vsize: Double, value: Int) {
+        self.txid = txid; self.fee = fee; self.vsize = vsize; self.value = value
+    }
+
+    public var id: String { txid }
+    public var feeRate: Double { vsize > 0 ? Double(fee) / vsize : 0 }
+}
+
 extension Format {
     /// Sats as BTC: "0.0425 BTC", up to 8 decimals with trailing zeros trimmed (at least 2).
     public static func btc(_ sats: Int, signed: Bool = false) -> String {

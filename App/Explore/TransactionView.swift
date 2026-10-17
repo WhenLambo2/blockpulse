@@ -20,11 +20,13 @@ struct TransactionView: View {
     @State private var replacedBy: String?
     @State private var error: MempoolError?
     @State private var showQR = false
-    @State private var showAllInputs = false
-    @State private var showAllOutputs = false
+    @State private var inputLimit = Self.listLimit
+    @State private var outputLimit = Self.listLimit
 
     private static let pollInterval: Duration = .seconds(30)
+    /// Rows shown at first, and added per "Show more": batch transactions have thousands.
     private static let listLimit = 25
+    private static let listStep = 200
 
     private var currency: Currency { Currency(rawValue: currencyRaw) ?? .eur }
     private var route: ExploreRoute { .transaction(txid, output: output) }
@@ -73,8 +75,9 @@ struct TransactionView: View {
                         shareURL: route.webURL(base: Explore.webBase))
         }
         .task {
-            price = Explore.cachedPrice()
-            await load()
+            if price == nil { price = Explore.cachedPrice() }
+            // Coming back from a page opened from here: a confirmed transaction doesn't change.
+            if tx?.status.confirmed != true { await load() }
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.pollInterval)
                 guard !Task.isCancelled, tx?.status.confirmed != true else { return }
@@ -86,28 +89,33 @@ struct TransactionView: View {
     /// The web link, so any phone camera can open it.
     private var qrPayload: String { route.webURL(base: Explore.webBase)?.absoluteString ?? txid }
 
+    /// The transaction shows as soon as it arrives; spent links, confirmations and CPFP fill in after.
     private func load() async {
         let client = Explore.client()
+        async let spends = try? client.outspends(txid)
+        async let height = try? client.tipHeight()
         do {
             let fresh = try await client.transaction(txid)
-            async let spends = try? client.outspends(txid)
-            async let height = try? client.tipHeight()
-            if !fresh.status.confirmed {
-                async let cpfp = try? client.cpfp(txid)
-                async let blocks = try? client.projectedBlocks()
-                effectiveRate = await cpfp?.effectiveFeePerVsize
-                projected = await blocks ?? projected
-            }
-            outspends = await spends ?? outspends
-            tip = await height ?? tip
             tx = fresh
             notFound = false
             error = nil
+            if !fresh.status.confirmed {
+                async let cpfp = try? client.cpfp(txid)
+                async let blocks = try? client.projectedBlocks()
+                let (info, pending) = await (cpfp, blocks)
+                effectiveRate = info?.effectiveFeePerVsize
+                projected = pending ?? projected
+            }
+            let (spent, newTip) = await (spends, height)
+            outspends = spent ?? outspends
+            tip = newTip ?? tip
+        } catch is CancellationError {
+            return
         } catch let failure as MempoolError where failure.isNotFound {
             notFound = true
             replacedBy = (try? await client.rbf(txid))?.replacement(of: txid)
         } catch {
-            self.error = Explore.failure(error)
+            if tx == nil { self.error = Explore.failure(error) }
         }
     }
 
@@ -169,7 +177,8 @@ struct TransactionView: View {
         VStack(spacing: 10) {
             if tx.status.confirmed {
                 if let height = tx.status.blockHeight {
-                    RouteRow(route: .block(.height(height))) {
+                    // By hash when known: saves the height lookup when the block opens.
+                    RouteRow(route: .block(tx.status.blockHash.map { .hash($0) } ?? .height(height))) {
                         StatRow(label: "Block", value: Format.grouped(Double(height)))
                     }
                 }
@@ -192,21 +201,23 @@ struct TransactionView: View {
     }
 
     private func inputs(_ tx: BitcoinTx) -> some View {
-        let shown = showAllInputs ? tx.vin : Array(tx.vin.prefix(Self.listLimit))
+        let shown = tx.vin.prefix(inputLimit)
         return VStack(alignment: .leading, spacing: 8) {
-            SectionLabel("Inputs · \(tx.vin.count)")
-            ForEach(Array(shown.enumerated()), id: \.offset) { _, input in
-                if input.isCoinbase {
-                    ioRow(label: "Coinbase (new coins)", value: nil, route: nil, highlighted: false)
-                } else {
-                    ioRow(label: input.prevout?.label ?? Format.short(input.txid),
-                          value: input.prevout?.value,
-                          route: input.prevout?.scriptpubkeyAddress.map { .address($0) },
-                          highlighted: false)
+            SectionLabel("Inputs · \(Format.grouped(Double(tx.vin.count)))")
+            LazyVStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(shown.enumerated()), id: \.offset) { _, input in
+                    if input.isCoinbase {
+                        ioRow(label: "Coinbase (new coins)", value: nil, route: nil, highlighted: false)
+                    } else {
+                        ioRow(label: input.prevout?.label ?? Format.short(input.txid),
+                              value: input.prevout?.value,
+                              route: input.prevout?.scriptpubkeyAddress.map { .address($0) },
+                              highlighted: false)
+                    }
                 }
             }
             if tx.vin.count > shown.count {
-                Button("Show all \(Format.grouped(Double(tx.vin.count))) inputs") { showAllInputs = true }
+                Button(moreTitle(remaining: tx.vin.count - shown.count, noun: "inputs")) { inputLimit += Self.listStep }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.orange)
             }
@@ -215,33 +226,40 @@ struct TransactionView: View {
     }
 
     private func outputs(_ tx: BitcoinTx) -> some View {
-        let limit = max(Self.listLimit, (output ?? 0) + 1)
-        let shown = showAllOutputs ? tx.vout : Array(tx.vout.prefix(limit))
+        let shown = tx.vout.prefix(max(outputLimit, (output ?? 0) + 1))
         return VStack(alignment: .leading, spacing: 8) {
-            SectionLabel("Outputs · \(tx.vout.count)")
-            ForEach(Array(shown.enumerated()), id: \.offset) { index, out in
-                VStack(alignment: .leading, spacing: 4) {
-                    ioRow(label: out.label, value: out.value,
-                          route: out.scriptpubkeyAddress.map { .address($0) },
-                          highlighted: index == output)
-                    if index < outspends.count, outspends[index].spent, let spender = outspends[index].txid {
-                        NavigationLink(value: ExploreRoute.transaction(spender, output: nil)) {
-                            Label("Spent in \(Format.short(spender))", systemImage: "arrow.turn.down.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+            SectionLabel("Outputs · \(Format.grouped(Double(tx.vout.count)))")
+            LazyVStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(shown.enumerated()), id: \.offset) { index, out in
+                    VStack(alignment: .leading, spacing: 4) {
+                        ioRow(label: out.label, value: out.value,
+                              route: out.scriptpubkeyAddress.map { .address($0) },
+                              highlighted: index == output)
+                        if index < outspends.count, outspends[index].spent, let spender = outspends[index].txid {
+                            NavigationLink(value: ExploreRoute.transaction(spender, output: nil)) {
+                                Label("Spent in \(Format.short(spender))", systemImage: "arrow.turn.down.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.leading, 10)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.leading, 10)
                     }
                 }
             }
             if tx.vout.count > shown.count {
-                Button("Show all \(Format.grouped(Double(tx.vout.count))) outputs") { showAllOutputs = true }
+                Button(moreTitle(remaining: tx.vout.count - shown.count, noun: "outputs")) { outputLimit = shown.count + Self.listStep }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.orange)
             }
         }
         .card()
+    }
+
+    private func moreTitle(remaining: Int, noun: String) -> String {
+        remaining <= Self.listStep
+            ? "Show the other \(Format.grouped(Double(remaining))) \(noun)"
+            : "Show \(Self.listStep) more \(noun) of \(Format.grouped(Double(remaining)))"
     }
 
     @ViewBuilder

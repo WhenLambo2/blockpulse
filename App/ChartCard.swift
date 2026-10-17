@@ -172,6 +172,9 @@ struct ChartCard: View {
             let loaded = try await ChartStore.loader.load(id, period: period, currency: currency, force: force)
             show(loaded)
             error = nil
+        } catch is CancellationError {
+            // A newer load (another period or chart) took over.
+            return
         } catch {
             self.error = (error as? MempoolError)?.userMessage ?? error.localizedDescription
             if result?.period != period || result?.id != id { result = nil }

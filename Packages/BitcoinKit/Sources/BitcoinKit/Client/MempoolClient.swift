@@ -124,6 +124,11 @@ public struct MempoolClient: Sendable {
         return try await get("/api/address/\(address)/txs")
     }
     /// Up to 10 addresses starting with `prefix` (bech32 prefixes are sent in lower case).
+    /// The whole mempool with its fee histogram (heavier than `mempool()`, which the widgets use).
+    public func mempoolBacklog() async throws -> MempoolBacklog { try await get("/api/mempool") }
+    /// The last 10 transactions that entered the mempool.
+    public func recentMempoolTransactions() async throws -> [RecentMempoolTx] { try await get("/api/mempool/recent") }
+
     public func addressPrefix(_ prefix: String) async throws -> [String] {
         let p = prefix.lowercased().hasPrefix("bc1") ? prefix.lowercased() : prefix
         return try await get("/api/address-prefix/\(p)")
@@ -143,9 +148,12 @@ public struct MempoolClient: Sendable {
     func makeRequest(path: String, query: [URLQueryItem] = [], timeout: TimeInterval? = nil) -> URLRequest {
         var base = baseURL.absoluteString
         while base.hasSuffix("/") { base.removeLast() }
-        var components = URLComponents(string: base + path)!
+        // Paths carry user input (addresses, prefixes), so they are encoded rather than trusted.
+        let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
+        var components = URLComponents(string: base + encoded) ?? URLComponents(url: baseURL, resolvingAgainstBaseURL: false) ?? URLComponents()
         if !query.isEmpty { components.queryItems = query }
-        var request = URLRequest(url: components.url!, timeoutInterval: max(timeout ?? self.timeout, self.timeout))
+        let url = components.url ?? baseURL
+        var request = URLRequest(url: url, timeoutInterval: max(timeout ?? self.timeout, self.timeout))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
@@ -176,6 +184,11 @@ public struct MempoolClient: Sendable {
             (data, response) = try await transport.send(request)
         } catch let error as MempoolError {
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            // A page that moved on cancelled its request: not a network problem to show.
+            throw CancellationError()
         } catch {
             throw MempoolError.network(error.localizedDescription)
         }

@@ -83,3 +83,17 @@ CI builds it and the live check hits every Explore endpoint; these need a real i
 - [ ] Search: typing a partial `bc1q…` shows suggestions after a short pause; Return opens the top row; the paste button pastes without a permission alert.
 - [ ] Block strip opens centred on the dashed line; tapping a Recent blocks card on Blockpulse or a block in Charts switches to Explore with that block open.
 - [ ] `blockpulse://block/840000` opened from Safari or Notes lands on that block in Explore.
+
+## v3.1 Explore polish (2026-10-17)
+
+Time these once in a Release build (Edit Scheme → Run → Build Configuration: Release), not only with ⌘R in Debug:
+
+- [ ] Scanner opens full screen, camera live in under 0.5 s, a QR code on another phone's screen reads in under 0.3 s. "Scan again" is instant. Close works; it can't be swiped half away.
+- [ ] QR button: sheet appears at once. Save to Photos asks for add-only access the first time; with access off it explains where to turn it on; "Copied" resets after 2 s.
+- [ ] Share buttons (address, transaction, block, QR sheet): the share sheet appears in under 0.5 s with the Blockpulse icon and title, and Messages/Mail get the mempool.space link.
+- [ ] From photo: a 48 MP photo with a QR code reads in about a second without freezing; picking the same photo twice works.
+- [ ] Explore overview: Mempool card (count, vMB ≈ blocks, sat/vB to get in, fee bands), Incoming chart with the dashed block-capacity line, Latest transactions updating every 10 s. Nothing refreshes while a detail page is open (check the network log).
+- [ ] "All blocks" tile at the end of the mined side opens the endless list; airplane mode at the end shows "Couldn't load more · Retry".
+- [ ] Block page: tapping the arrows quickly walks several blocks, dims the old one while loading, and never shows "Couldn't load this block". Back from a transaction keeps the extra pages and scroll position.
+- [ ] Batch transaction with thousands of outputs: "Show 200 more" stays smooth.
+- [ ] Pending cubes readable at the lowest fee; cubes grow with large Dynamic Type.

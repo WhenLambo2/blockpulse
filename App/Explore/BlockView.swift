@@ -5,8 +5,9 @@ import BitcoinKit
 /// The arrows in the top bar walk to the previous and next block.
 struct BlockView: View {
     @State private var ref: BlockRef
-    /// The searched time, for "mined at or before" (date and timestamp searches).
-    private let searchedTime: Int?
+    /// The searched time, for "mined at or before" (date and timestamp searches). Cleared once the
+    /// arrows move to another block.
+    @State private var searchedTime: Int? = nil
 
     @AppStorage(AppSettings.Keys.currency, store: AppSettings.sharedDefaults)
     private var currencyRaw = Currency.eur.rawValue
@@ -16,20 +17,42 @@ struct BlockView: View {
     @State private var loadingTxs = false
     @State private var price: PriceInfo?
     @State private var error: MempoolError?
+    /// The ref the page shows, so coming back to it doesn't reload and drop the extra pages.
+    @State private var loadedRef: BlockRef?
+    @State private var loading = false
 
     init(ref: BlockRef) {
         _ref = State(initialValue: ref)
-        if case .timestamp(let t) = ref { searchedTime = t } else { searchedTime = nil }
+        if case .timestamp(let t) = ref { _searchedTime = State(initialValue: t) }
     }
 
     private var currency: Currency { Currency(rawValue: currencyRaw) ?? .eur }
 
+    /// Where the arrows count from: the block being loaded, else the one on screen.
+    private var currentHeight: Int? {
+        if case .height(let h) = ref { return h }
+        return block?.height
+    }
+
+    private func step(_ delta: Int) {
+        guard let height = currentHeight else { return }
+        searchedTime = nil
+        ref = .height(height + delta)
+    }
+
     var body: some View {
         ExplorePage(title: block.map { "Block \(Format.grouped(Double($0.height)))" } ?? "Block", refresh: load) {
             if let block {
-                header(block)
-                stats(block)
-                transactions(block)
+                Group {
+                    header(block)
+                    stats(block)
+                    transactions(block)
+                }
+                .opacity(loading ? 0.45 : 1)
+                .overlay(alignment: .top) {
+                    if loading { ProgressView().tint(Theme.orange).padding(.top, 60) }
+                }
+                .animation(.easeOut(duration: 0.15), value: loading)
             } else if let error {
                 ExploreMessage(title: error.isNotFound ? "Block not found" : "Couldn't load this block",
                                message: error.isNotFound ? "Check the height or hash and try again." : error.exploreMessage,
@@ -40,28 +63,34 @@ struct BlockView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if let block {
-                    Button { ref = .height(block.height - 1) } label: { Image(systemName: "chevron.left") }
-                        .disabled(block.height == 0)
+                if let block, let height = currentHeight {
+                    Button { step(-1) } label: { Image(systemName: "chevron.left") }
+                        .disabled(height <= 0)
                         .accessibilityLabel("Previous block")
-                    Button { ref = .height(block.height + 1) } label: { Image(systemName: "chevron.right") }
-                        .disabled(tip.map { block.height >= $0 } ?? true)
+                    Button { step(1) } label: { Image(systemName: "chevron.right") }
+                        .disabled(tip.map { height >= $0 } ?? true)
                         .accessibilityLabel("Next block")
                     if let url = ExploreRoute.block(.hash(block.id)).webURL(base: Explore.webBase) {
-                        ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
-                            .accessibilityLabel("Share")
+                        Button { Share.link(url, title: "Block \(Format.grouped(Double(block.height)))") } label: {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        .accessibilityLabel("Share")
                     }
                 }
             }
         }
         .task(id: ref) {
-            price = Explore.cachedPrice()
+            guard loadedRef != ref || block == nil else { return }
+            if price == nil { price = Explore.cachedPrice() }
             await load()
         }
     }
 
     private func load() async {
         let client = Explore.client()
+        let target = ref
+        loading = true
+        defer { if target == ref { loading = false } }
         do {
             let hash: String
             switch ref {
@@ -72,11 +101,17 @@ struct BlockView: View {
             async let height = try? client.tipHeight()
             async let firstPage = try? client.blockTransactions(hash, start: 0)
             let fresh = try await client.block(hash)
-            tip = await height ?? tip
-            txs = await firstPage ?? []
+            let (newTip, page) = await (height, firstPage)
+            guard target == ref else { return }
+            tip = newTip ?? tip
+            txs = page ?? []
             block = fresh
+            loadedRef = target
             error = nil
+        } catch is CancellationError {
+            return
         } catch {
+            guard target == ref else { return }
             block = nil
             self.error = Explore.failure(error)
         }
@@ -86,7 +121,9 @@ struct BlockView: View {
         guard !loadingTxs, txs.count < block.txCount else { return }
         loadingTxs = true
         defer { loadingTxs = false }
-        if let more = try? await Explore.client().blockTransactions(block.id, start: txs.count) {
+        let start = txs.count
+        if let more = try? await Explore.client().blockTransactions(block.id, start: start),
+           self.block?.id == block.id, txs.count == start {
             txs += more
         }
     }

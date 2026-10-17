@@ -3,13 +3,22 @@ import Foundation
 /// All user-facing number formatting. Fixed en_US grouping so widgets and tests are deterministic.
 public enum Format {
     public static func grouped(_ value: Double, fractionDigits: Int = 0) -> String {
+        let f = fractionDigits < groupedFormatters.count ? groupedFormatters[fractionDigits] : makeGrouped(fractionDigits)
+        return f.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    /// Building a NumberFormatter is slow and lists format hundreds of numbers per refresh, so the
+    /// common ones are made once. Formatting with a configured formatter is thread-safe.
+    nonisolated(unsafe) private static let groupedFormatters: [NumberFormatter] = (0...8).map(makeGrouped)
+
+    private static func makeGrouped(_ fractionDigits: Int) -> NumberFormatter {
         let f = NumberFormatter()
         f.locale = Locale(identifier: "en_US")
         f.numberStyle = .decimal
         f.minimumFractionDigits = fractionDigits
         f.maximumFractionDigits = fractionDigits
         f.roundingMode = .halfUp
-        return f.string(from: NSNumber(value: value)) ?? String(value)
+        return f
     }
 
     /// "€73,984"

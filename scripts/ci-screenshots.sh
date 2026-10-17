@@ -37,6 +37,7 @@ shot 2-charts-dark     -selectedTab charts   -appearance dark -chartsCategory fa
 shot 3-mining-dark     -selectedTab charts   -appearance dark -chartsCategory mining
 shot 4-blocks-dark     -selectedTab charts   -appearance dark -chartsCategory favourites -chartFavourites '(recentBlocks, difficultyHistory)'
 shot 5-settings-dark   -selectedTab settings -appearance dark
+shot 9-explore-dark    -selectedTab explore  -appearance dark
 shot 6-home-light      -selectedTab pulse    -appearance light -feeTilesShowFiat YES
 shot 7-market-light    -selectedTab charts   -appearance light -chartsCategory market
 shot 8-celebrate-dark  -selectedTab pulse    -appearance dark -celebrateAfter 18.0

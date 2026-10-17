@@ -505,12 +505,14 @@ struct ChartTableView: View {
 /// The latest blocks as a sideways row of block cards with their details, newest first.
 struct RecentBlocksView: View {
     let blocks: [Block]
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: 12) {
                 ForEach(blocks) { block in
-                    BlockDetailCard(block: block)
+                    Button { appState.open(.block(.hash(block.id))) } label: { BlockDetailCard(block: block) }
+                        .buttonStyle(.plain)
                 }
             }
             .padding(.vertical, 4)

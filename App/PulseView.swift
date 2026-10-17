@@ -282,21 +282,24 @@ struct PulseView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(alignment: .top, spacing: 12) {
                             ForEach(Array(model.extras.projectedBlocks.prefix(8).enumerated()), id: \.offset) { i, block in
-                                VStack(spacing: 6) {
-                                    BlockCube(intensity: Theme.feeIntensity(block.medianFee))
-                                    Text("~\(Format.feeRateNumber(block.medianFee))")
-                                        .font(.number(.caption, weight: .semibold))
-                                    Text(i == 0 ? "next" : "+\(i)")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
+                                Button { appState.open(.pendingBlock(i)) } label: {
+                                    VStack(spacing: 6) {
+                                        BlockCube(intensity: Theme.feeIntensity(block.medianFee))
+                                        Text("~\(Format.feeRateNumber(block.medianFee))")
+                                            .font(.number(.caption, weight: .semibold))
+                                        Text(i == 0 ? "next" : "+\(i)")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel("Projected block \(i + 1), median \(Format.feeRate(block.medianFee))")
                                 }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Projected block \(i + 1), median \(Format.feeRate(block.medianFee))")
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding(.vertical, 2)
                     }
-                    Text("Projected blocks, median sat/vB. Brighter means pricier.")
+                    Text("Projected blocks, median sat/vB. Brighter means pricier. Tap one to explore it.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -370,20 +373,23 @@ struct PulseView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 10) {
                     ForEach(blocks) { b in
-                        VStack(alignment: .leading, spacing: 6) {
-                            BlockCube(size: 34)
-                            Text(Format.blockHeight(b.height)).font(.number(.subheadline, weight: .bold))
-                            Text(b.timestamp, style: .relative).font(.caption2).foregroundStyle(.secondary)
-                            Text("\(Format.compactCount(b.txCount)) tx").font(.number(.caption, weight: .regular))
-                            if let fee = b.medianFee {
-                                Text("~\(Format.feeRate(fee))").font(.number(.caption, weight: .regular))
+                        Button { appState.open(.block(.hash(b.id))) } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                BlockCube(size: 34)
+                                Text(Format.blockHeight(b.height)).font(.number(.subheadline, weight: .bold))
+                                Text(b.timestamp, style: .relative).font(.caption2).foregroundStyle(.secondary)
+                                Text("\(Format.compactCount(b.txCount)) tx").font(.number(.caption, weight: .regular))
+                                if let fee = b.medianFee {
+                                    Text("~\(Format.feeRate(fee))").font(.number(.caption, weight: .regular))
+                                }
+                                Text(b.poolName ?? "Unknown").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                             }
-                            Text(b.poolName ?? "Unknown").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            .padding(12)
+                            .frame(width: 128, alignment: .leading)
+                            .background(Theme.cardRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .accessibilityElement(children: .combine)
                         }
-                        .padding(12)
-                        .frame(width: 128, alignment: .leading)
-                        .background(Theme.cardRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .accessibilityElement(children: .combine)
+                        .buttonStyle(.plain)
                     }
                 }
             }

@@ -38,6 +38,11 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: Blockpulse uses the camera to scan QR codes of Bitcoin addresses and transactions. Scanning happens on your iPhone and nothing is recorded.
+        NSPhotoLibraryAddUsageDescription: Blockpulse saves the QR codes you choose to your photo library.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.lazet.blockpulse
+            CFBundleURLSchemes: [blockpulse]
         LSRequiresIPhoneOS: true
     entitlements:
       path: App/Blockpulse.entitlements

@@ -44,12 +44,14 @@ public enum Format {
 
     public static func sats(_ value: Int) -> String { grouped(Double(value)) + " sats" }
 
-    /// < 1: two decimals trimmed ("0.35", "0.1"); 1–10: one decimal trimmed ("2.2", "1"); ≥ 10: integer.
+    /// < 1: two decimals trimmed ("0.35", "0.1"); 1–10: one decimal trimmed ("2.2", "1"); ≥ 10: integer,
+    /// grouped from 1,000 up ("3,604,819").
     public static func feeRateNumber(_ value: Double) -> String {
         if value <= 0 { return "0" }
         if value < 1 { return trimmed(String(format: "%.2f", value)) }
         if value < 10 { return trimmed(String(format: "%.1f", value)) }
-        return String(Int(value.rounded()))
+        if value < 1000 { return String(Int(value.rounded())) }
+        return grouped(value.rounded())
     }
 
     public static func feeRate(_ value: Double) -> String { feeRateNumber(value) + " sat/vB" }

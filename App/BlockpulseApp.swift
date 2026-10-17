@@ -54,6 +54,13 @@ struct BlockpulseApp: App {
             .onOpenURL { url in
                 if let route = ExploreRoute(url: url) { appState.open(route) }
             }
+            // CI screenshots: `-openLink blockpulse://tx/…` opens that page on launch.
+            .task {
+                if let link = UserDefaults.standard.string(forKey: "openLink"),
+                   let url = URL(string: link), let route = ExploreRoute(url: url) {
+                    appState.open(route)
+                }
+            }
             .onChange(of: appState.requestedTab) { _, tab in
                 guard let tab else { return }
                 selectedTab = tab

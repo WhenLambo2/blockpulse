@@ -38,6 +38,9 @@ shot 3-mining-dark     -selectedTab charts   -appearance dark -chartsCategory mi
 shot 4-blocks-dark     -selectedTab charts   -appearance dark -chartsCategory favourites -chartFavourites '(recentBlocks, difficultyHistory)'
 shot 5-settings-dark   -selectedTab settings -appearance dark
 shot 9-explore-dark    -selectedTab explore  -appearance dark
+shot 10-tx-dark        -selectedTab explore  -appearance dark -openLink blockpulse://tx/f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16
+shot 11-block-dark     -selectedTab explore  -appearance dark -openLink blockpulse://block/840000
+shot 12-address-dark   -selectedTab explore  -appearance dark -openLink blockpulse://address/bc1qm34lsc65zpw79lxes69zkqmk6ee3ewf0j77s3h
 shot 6-home-light      -selectedTab pulse    -appearance light -feeTilesShowFiat YES
 shot 7-market-light    -selectedTab charts   -appearance light -chartsCategory market
 shot 8-celebrate-dark  -selectedTab pulse    -appearance dark -celebrateAfter 18.0

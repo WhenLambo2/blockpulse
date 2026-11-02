@@ -51,10 +51,10 @@ import Testing
     }
 
     @Test func feeRates() {
-        #expect(Format.feeRate(2) == "2 s/vB")
+        #expect(Format.feeRate(2) == "2 sat/vB")
         #expect(Format.feeRate(0.3465) == "0.35 sat/vB")
         #expect(Format.feeRate(0.1) == "0.1 sat/vB")
-        #expect(Format.feeRate(2.24) == "2.2 s/vB")
+        #expect(Format.feeRate(2.24) == "2.2 sat/vB")
         #expect(Format.feeRate(1.0) == "1 sat/vB")
         #expect(Format.feeRate(12.6) == "13 sat/vB")
         #expect(Format.feeRate(0) == "0 sat/vB")

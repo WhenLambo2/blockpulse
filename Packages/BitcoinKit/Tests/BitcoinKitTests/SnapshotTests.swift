@@ -78,6 +78,13 @@ import Testing
         // Already stale: just now.
         #expect(RefreshPolicy.entryDates(now: now, fetchedAt: now.addingTimeInterval(-3600)) == [now])
         #expect(RefreshPolicy.entryDates(now: now, fetchedAt: nil) == [now])
+        // Minute entries until the next reload, merged with the stale moment.
+        let minutes = RefreshPolicy.entryDates(now: now, fetchedAt: now, until: now.addingTimeInterval(15 * 60))
+        #expect(minutes.count == 16)
+        #expect(minutes.first == now)
+        #expect(minutes[1] == now.addingTimeInterval(60))
+        #expect(minutes.last == now.addingTimeInterval(30 * 60 + 1))
+        #expect(RefreshPolicy.entryDates(now: now, fetchedAt: nil, until: now.addingTimeInterval(5 * 60)).count == 5)
     }
 
     @Test func nextReloadForResult() {

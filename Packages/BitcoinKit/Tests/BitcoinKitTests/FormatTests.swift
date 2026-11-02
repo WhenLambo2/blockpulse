@@ -51,23 +51,38 @@ import Testing
     }
 
     @Test func feeRates() {
-        #expect(Format.feeRate(2) == "2 sat/vB")
+        #expect(Format.feeRate(2) == "2 s/vB")
         #expect(Format.feeRate(0.3465) == "0.35 sat/vB")
         #expect(Format.feeRate(0.1) == "0.1 sat/vB")
-        #expect(Format.feeRate(2.24) == "2.2 sat/vB")
+        #expect(Format.feeRate(2.24) == "2.2 s/vB")
         #expect(Format.feeRate(1.0) == "1 sat/vB")
         #expect(Format.feeRate(12.6) == "13 sat/vB")
         #expect(Format.feeRate(0) == "0 sat/vB")
         #expect(Format.feeRateNumber(0.3465) == "0.35")
     }
 
+    @Test func lockScreenFormats() {
+        #expect(Format.feeRateShort(1.7) == "1.7 s/vB")
+        #expect(Format.feeRateShort(12.6) == "13 s/vB")
+        #expect(Format.arrowPercent(0.394) == "▲ 0.39%")
+        #expect(Format.arrowPercent(-12.449) == "▼ 12.45%")
+        #expect(Format.arrowPercent(-12.449, decimals: 1) == "▼ 12.4%")
+        #expect(Format.arrowPercent(0.001) == "0.00%")
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        #expect(Format.minutesAgo(now.addingTimeInterval(-30), now: now) == "just now")
+        #expect(Format.minutesAgo(now.addingTimeInterval(-5 * 60 - 29), now: now) == "5 min ago")
+        #expect(Format.minutesAgo(now.addingTimeInterval(-65 * 60), now: now) == "1 hr 5 min ago")
+        #expect(Format.minutesAgo(now.addingTimeInterval(-120 * 60), now: now) == "2 hr ago")
+        #expect(Format.minutesAgo(now.addingTimeInterval(60), now: now) == "just now")
+    }
+
     @Test func inlineSummary() {
         let full = BitcoinSnapshot.sample()
-        #expect(Format.inline(full, .eur) == "₿ €73,984 · 2 sat/vB")
-        #expect(Format.inline(full, .usd) == "₿ $82,565 · 2 sat/vB")
+        #expect(Format.inline(full, .eur) == "₿ €73,984 · 2 s/vB")
+        #expect(Format.inline(full, .usd) == "₿ $82,565 · 2 s/vB")
         var noPrice = full
         noPrice.price = nil
-        #expect(Format.inline(noPrice, .eur) == "₿ #971,150 · 2 sat/vB")
+        #expect(Format.inline(noPrice, .eur) == "₿ #971,150 · 2 s/vB")
         let empty = BitcoinSnapshot(fetchedAt: .now, price: nil, blocks: [], fees: nil, mempool: nil, difficulty: nil)
         #expect(Format.inline(empty, .eur) == "₿ —")
     }

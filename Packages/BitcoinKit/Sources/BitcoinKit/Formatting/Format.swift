@@ -54,19 +54,40 @@ public enum Format {
 
     public static func feeRate(_ value: Double) -> String { feeRateNumber(value) + " sat/vB" }
 
+    /// Lock Screen fee, where every point of width counts: "2.2 s/vB".
+    public static func feeRateShort(_ value: Double) -> String { feeRateNumber(value) + " s/vB" }
+
+    /// Lock Screen change without color: "▲ 0.39%", "▼ 1.2%", "0.00%" when flat at this precision.
+    public static func arrowPercent(_ percent: Double, decimals: Int = 2) -> String {
+        let factor = pow(10, Double(decimals))
+        let rounded = (percent * factor).rounded() / factor
+        let digits = String(format: "%.\(decimals)f", abs(rounded)) + "%"
+        if rounded == 0 { return digits }
+        return (rounded < 0 ? "▼ " : "▲ ") + digits
+    }
+
+    /// Short age for the Lock Screen: "just now", "5 min ago", "1 hr 5 min ago".
+    public static func minutesAgo(_ date: Date, now: Date) -> String {
+        let minutes = max(0, Int(now.timeIntervalSince(date) / 60))
+        if minutes < 1 { return "just now" }
+        if minutes < 60 { return "\(minutes) min ago" }
+        let hours = minutes / 60, rest = minutes % 60
+        return rest == 0 ? "\(hours) hr ago" : "\(hours) hr \(rest) min ago"
+    }
+
     /// "#971,150"
     public static func blockHeight(_ height: Int) -> String { "#" + grouped(Double(height)) }
 
     /// "38.5 vMB"
     public static func vMB(_ vsize: Int) -> String { String(format: "%.1f", Double(vsize) / 1_000_000) + " vMB" }
 
-    /// Lock Screen inline: "₿ €73,984 · 2 sat/vB". The line shares its row with the date, so it holds
+    /// Lock Screen inline: "₿ €73,984 · 2 s/vB". The line shares its row with the date, so it holds
     /// two values at most: the block height only stands in when there is no price.
     public static func inline(_ snapshot: BitcoinSnapshot, _ currency: Currency) -> String {
         var parts: [String] = []
         if let p = snapshot.price { parts.append(price(p.price(in: currency), currency)) }
         else if let h = snapshot.tipHeight { parts.append(blockHeight(h)) }
-        if let f = snapshot.fees { parts.append(feeRate(f.fastestFee)) }
+        if let f = snapshot.fees { parts.append(feeRateShort(f.fastestFee)) }
         return parts.isEmpty ? "₿ —" : "₿ " + parts.joined(separator: " · ")
     }
 

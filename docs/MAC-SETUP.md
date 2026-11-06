@@ -5,12 +5,12 @@
 2. Run `./scripts/bootstrap-mac.sh`. It installs XcodeGen if needed, asks for your Team ID once, generates the Xcode project, runs the BitcoinKit tests (unit + live), builds for the Simulator, and opens Xcode.
 3. If the Simulator build fails, check `docs/MAC-TODO.md` first. That file lists every item that could not be compiled on Linux.
 
-## 2. Signing (personal account)
-1. Xcode → Settings → Accounts: make sure your personal Apple ID / team is signed in.
-2. Select the **Blockpulse** target → Signing & Capabilities. Leave "Automatically manage signing" on and pick your team. Xcode registers `com.lazet.blockpulse`.
-3. Under **App Groups**, tick or add `group.com.lazet.blockpulse`. Xcode registers it in the portal.
-4. Repeat for the **BlockpulseWidgets** target (`com.lazet.blockpulse.widgets`, same App Group).
-5. If the bundle ID is taken, change the `com.lazet` prefix in `project.yml` (both targets, plus `AppGroup.identifier` in `Packages/BitcoinKit/Sources/BitcoinKit/Snapshot/SnapshotStore.swift` and the entitlements), then run `xcodegen generate`.
+## 2. Signing (Arterion team)
+1. Xcode → Settings → Accounts: sign in and select the **Arterion Consultancy B.V.** team.
+2. Select the **Blockpulse** target → Signing & Capabilities. Leave "Automatically manage signing" on. Xcode registers `nl.arterion.blockpulse`.
+3. Under **App Groups**, tick or add `group.nl.arterion.blockpulse`. Xcode registers it in the portal.
+4. Repeat for the **BlockpulseWidgets** target (`nl.arterion.blockpulse.widgets`, same App Group).
+5. Forks: change the `nl.arterion` prefix in `project.yml` (all targets and entitlements, plus `AppGroup.identifier` in `Packages/BitcoinKit/Sources/BitcoinKit/Snapshot/SnapshotStore.swift`), set your own team in `Config/Local.xcconfig`, then run `xcodegen generate`.
 
 ## 3. Run on your iPhone
 1. Plug in the iPhone (or use Wi-Fi pairing). Enable Developer Mode on the phone when prompted.
@@ -20,12 +20,15 @@
 5. To debug widgets, use the **BlockpulseWidgets** scheme → run → pick Blockpulse. Edit the scheme's `_XCWidgetKind` / `_XCWidgetFamily` to choose which widget.
 
 ## 4. TestFlight (internal, no review)
-1. Go to https://appstoreconnect.apple.com → Apps → + New App. Platform iOS, name "Blockpulse" (if taken, try "Blockpulse BTC"; the display name can stay Blockpulse), bundle ID `com.lazet.blockpulse`, SKU `blockpulse`.
+1. Go to https://appstoreconnect.apple.com → Apps → + New App. Platform iOS, name "Blockpulse" (if taken, try "Blockpulse BTC"; the display name can stay Blockpulse), bundle ID `nl.arterion.blockpulse`, SKU `blockpulse`.
 2. In Xcode: destination **Any iOS Device (arm64)** → Product → Archive.
 3. In the Organizer: Distribute App → **TestFlight Internal Only** → Upload.
 4. In App Store Connect → TestFlight: when processing finishes (5–30 min), add yourself to Internal Testing.
 5. Install the **TestFlight** app on the iPhone and accept.
 6. For each new build, bump `CURRENT_PROJECT_VERSION` in `project.yml`, then `xcodegen generate` and archive again.
+
+## 4b. Xcode Cloud
+`ci_scripts/ci_post_clone.sh` installs XcodeGen and generates the project after each clone, so Xcode Cloud can build the repo as is. Xcode Cloud sets the build number itself. Create the workflow in Xcode (Integrate → Create Workflow) with a manual start condition, an Archive action and TestFlight internal testing as post-action.
 
 ## 5. Verification (from the spec)
 - Widgets update about every 15 min over a day.

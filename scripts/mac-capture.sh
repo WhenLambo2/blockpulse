@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="${1:-captures}"
-BUNDLE=com.lazet.blockpulse
+BUNDLE=nl.arterion.blockpulse
 TAKES=(test1HomeBlockFound test2HomeScroll test3ChartsSwipe test4PriceScrub)
 [ -n "${ONLY:-}" ] && read -ra TAKES <<< "$ONLY"   # one or more take names, space separated
 

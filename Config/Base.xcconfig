@@ -1,2 +1,3 @@
-// Shared build settings. Personal signing team lives in the gitignored Local.xcconfig.
+// Shared build settings. Signing team: Arterion Consultancy B.V. Forks override it in the gitignored Local.xcconfig.
+DEVELOPMENT_TEAM = NNVBJ33M7Q
 #include? "Local.xcconfig"

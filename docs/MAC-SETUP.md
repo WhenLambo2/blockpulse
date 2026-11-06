@@ -2,15 +2,16 @@
 
 ## 1. Clone and bootstrap (~10 min)
 1. Clone the repo on the MacBook.
-2. Run `./scripts/bootstrap-mac.sh`. It installs XcodeGen if needed, asks for your Team ID once, generates the Xcode project, runs the BitcoinKit tests (unit + live), builds for the Simulator, and opens Xcode.
+2. Run `./scripts/bootstrap-mac.sh`. It installs XcodeGen if needed, generates the Xcode project, runs the BitcoinKit tests (unit + live), builds for the Simulator, and opens Xcode.
 3. If the Simulator build fails, check `docs/MAC-TODO.md` first. That file lists every item that could not be compiled on Linux.
 
 ## 2. Signing (Arterion team)
 1. Xcode → Settings → Accounts: sign in and select the **Arterion Consultancy B.V.** team.
-2. Select the **Blockpulse** target → Signing & Capabilities. Leave "Automatically manage signing" on. Xcode registers `nl.arterion.blockpulse`.
-3. Under **App Groups**, tick or add `group.nl.arterion.blockpulse`. Xcode registers it in the portal.
-4. Repeat for the **BlockpulseWidgets** target (`nl.arterion.blockpulse.widgets`, same App Group).
-5. Forks: change the `nl.arterion` prefix in `project.yml` (all targets and entitlements, plus `AppGroup.identifier` in `Packages/BitcoinKit/Sources/BitcoinKit/Snapshot/SnapshotStore.swift`), set your own team in `Config/Local.xcconfig`, then run `xcodegen generate`.
+2. Delete `Config/Local.xcconfig` if you made one for the personal team; it would override the Arterion Team ID (`NNVBJ33M7Q`) in `Config/Base.xcconfig`.
+3. Select the **Blockpulse** target → Signing & Capabilities. Leave "Automatically manage signing" on. Xcode registers `nl.arterion.blockpulse`.
+4. Under **App Groups**, tick or add `group.nl.arterion.blockpulse`. Xcode registers it in the portal.
+5. Repeat for the **BlockpulseWidgets** target (`nl.arterion.blockpulse.widgets`, same App Group).
+6. Forks: change the `nl.arterion` prefix in `project.yml` (all targets and entitlements, plus `AppGroup.identifier` in `Packages/BitcoinKit/Sources/BitcoinKit/Snapshot/SnapshotStore.swift`), set your own team in `Config/Local.xcconfig`, then run `xcodegen generate`.
 
 ## 3. Run on your iPhone
 1. Plug in the iPhone (or use Wi-Fi pairing). Enable Developer Mode on the phone when prompted.

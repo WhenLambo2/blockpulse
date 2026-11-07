@@ -4,12 +4,12 @@
 # Usage: scripts/mac-capture.sh [out-dir]          (default: captures)
 #        SIM_NAME="iPhone 17 Pro Max" scripts/mac-capture.sh
 #        ONLY="test2HomeScroll test3ChartsSwipe" scripts/mac-capture.sh   (re-record some takes)
-# Takes about 17 minutes. Close other heavy apps first: dropped frames show up in the recordings.
+# Takes about 22 minutes. Close other heavy apps first: dropped frames show up in the recordings.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="${1:-captures}"
 BUNDLE=nl.arterion.blockpulse
-TAKES=(test1HomeBlockFound test2HomeScroll test3ChartsSwipe test4PriceScrub)
+TAKES=(test1HomeBlockFound test2HomeScroll test3ChartsSwipe test4PriceScrub test5ExploreOverview test6ExploreSearch test7ExploreScan)
 [ -n "${ONLY:-}" ] && read -ra TAKES <<< "$ONLY"   # one or more take names, space separated
 
 command -v xcodegen >/dev/null || brew install xcodegen
@@ -23,6 +23,8 @@ pick = [d for d in phones if d["name"] == want] if want else [d for d in phones 
 if not pick: sys.exit("No matching iPhone simulator" + (" named " + want if want else ""))
 print(pick[-1]["udid"])')
 echo "Simulator: $UDID"
+# The on-screen keyboard shows in the search take only without the Mac keyboard attached.
+defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
 xcrun simctl boot "$UDID" 2>/dev/null || true
 xcrun simctl bootstatus "$UDID" -b >/dev/null
 open -a Simulator --args -CurrentDeviceUDID "$UDID" || true

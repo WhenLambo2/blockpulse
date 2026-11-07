@@ -27,6 +27,30 @@ final class CaptureTests: XCTestCase {
                    withVelocity: XCUIGestureVelocity(velocity), thenHoldForDuration: hold)
     }
 
+    /// Satoshi's genesis address: the code the scanner take reads.
+    private let genesisAddress = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
+
+    /// Explore: type a block height into search at a readable pace and open it.
+    private func searchBlock(_ height: String) {
+        let field = app.textFields["Block, transaction or address"].firstMatch
+        guard field.waitForExistence(timeout: 5) else { return }
+        field.tap()
+        wait(0.9)
+        for character in height { field.typeText(String(character)); wait(0.2) }
+        wait(1.3)
+        let go = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Go to'")).firstMatch
+        if go.waitForExistence(timeout: 3) { go.tap() } else { field.typeText("\n") }
+    }
+
+    /// Explore: open the scanner, let the demo code slide in and be read, then open what it found.
+    private func scanAndOpen() {
+        let scan = app.buttons["Scan QR code"].firstMatch
+        guard scan.waitForExistence(timeout: 5) else { return }
+        scan.tap()
+        wait(4.6)
+        tapIfPresent("Open address")
+    }
+
     private func tapIfPresent(_ label: String) {
         let button = app.buttons[label].firstMatch
         if button.waitForExistence(timeout: 2) { button.tap() }
@@ -49,6 +73,17 @@ final class CaptureTests: XCTestCase {
         launch(["-selectedTab", "charts", "-chartsCategory", "favourites"])
         wait(4)
         for period in ["24H", "1W", "1M", "1Y", "5Y"] { tapIfPresent(period); wait(3) }
+        // Explore: the overview, the searched block and the scanned address, so their data is recorded.
+        app.terminate()
+        launch(["-selectedTab", "explore", "-demoScan", genesisAddress])
+        wait(6)
+        searchBlock("840000")
+        wait(6)
+        app.terminate()
+        launch(["-selectedTab", "explore", "-demoScan", genesisAddress])
+        wait(4)
+        scanAndOpen()
+        wait(6)
     }
 
     /// Home: the heartbeat searches, then a new block arrives and the app celebrates it.
@@ -97,5 +132,29 @@ final class CaptureTests: XCTestCase {
         wait(1.5)
         drag(from: CGVector(dx: 0.8, dy: 0.6), to: CGVector(dx: 0.35, dy: 0.6), velocity: 120, hold: 0.8, press: 0.5)
         wait(2)
+    }
+
+    /// Explore: the live strip of pending and mined blocks, then one glide through the mempool overview and back.
+    func test5ExploreOverview() {
+        launch(["-selectedTab", "explore", "-demoExploreScroll", "4"])
+        wait(12)
+    }
+
+    /// Explore: type the halving block's height into search and open its page.
+    func test6ExploreSearch() {
+        launch(["-selectedTab", "explore"])
+        wait(3)
+        searchBlock("840000")
+        wait(3)
+        drag(from: CGVector(dx: 0.5, dy: 0.75), to: CGVector(dx: 0.5, dy: 0.45), velocity: 900)
+        wait(3)
+    }
+
+    /// Explore: scan a QR code (the genesis address, shown by `-demoScan`) and open the address.
+    func test7ExploreScan() {
+        launch(["-selectedTab", "explore", "-demoScan", genesisAddress])
+        wait(3)
+        scanAndOpen()
+        wait(4)
     }
 }

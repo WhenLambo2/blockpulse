@@ -13,6 +13,8 @@ struct ExploreView: View {
     @State private var isLookingUp = false
     @State private var showScanner = false
     @State private var recents: [ExploreRoute] = []
+    /// Only moved by code for marketing captures (`-demoExploreScroll`); people scroll as usual.
+    @State private var scrollPosition = ScrollPosition(edge: .top)
 
     /// Worked out once per edit rather than on every redraw.
     @State private var interpretation = SearchParser.interpret("", tip: nil)
@@ -34,6 +36,7 @@ struct ExploreView: View {
                     .padding(.top, 4)
                     .padding(.bottom, 24)
                 }
+                .scrollPosition($scrollPosition)
                 .scrollDismissesKeyboard(.immediately)
                 .refreshable { await model.refresh() }
             }
@@ -52,6 +55,14 @@ struct ExploreView: View {
             await model.runLiveUpdates()
         }
         .task(id: text) { await lookUpPrefix() }
+        .task {
+            // Captures: one even glide through the overview and back, like the home screen's.
+            guard let delay = DemoMode.exploreScrollAfter else { return }
+            try? await Task.sleep(for: .seconds(delay))
+            withAnimation(.easeInOut(duration: 2.6)) { scrollPosition.scrollTo(edge: .bottom) }
+            try? await Task.sleep(for: .seconds(3.6))
+            withAnimation(.smooth(duration: 1.1)) { scrollPosition.scrollTo(edge: .top) }
+        }
         .onChange(of: text, initial: true) { _, new in interpretation = SearchParser.interpret(new, tip: model.tip) }
         .onChange(of: model.tip) { _, tip in interpretation = SearchParser.interpret(text, tip: tip) }
         .onAppear { recents = AppPreferences().recentSearches }

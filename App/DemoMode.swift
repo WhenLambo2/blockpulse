@@ -8,6 +8,8 @@ import BitcoinKit
 /// - `-demoNewBlockAfter 9`: hold the newest block back for 9 s after launch, then let it arrive, which plays
 ///   the real block-found flow on the home screen.
 /// - `-demoAutoScroll 4`: 4 s after launch, glide the home screen to its end and back.
+/// - `-demoExploreScroll 4`: the same glide on the Explore tab, through the mempool overview.
+/// - `-demoScan <code>`: the QR scanner shows that code sliding into its frame and reads it (the Simulator has no camera).
 /// - `-demoStartCategory market`: open the Charts tab on that category. Unlike `-chartsCategory`, which
 ///   pins the category for the whole run, the category bar still follows swipes.
 enum DemoMode {
@@ -26,6 +28,16 @@ enum DemoMode {
         let defaults = UserDefaults.standard
         guard isOn, let category = defaults.string(forKey: "demoStartCategory") else { return }
         defaults.set(category, forKey: "chartsCategory")
+    }
+
+    static var exploreScrollAfter: TimeInterval? {
+        let seconds = UserDefaults.standard.double(forKey: "demoExploreScroll")
+        return isOn && seconds > 0 ? seconds : nil
+    }
+
+    static var scanCode: String? {
+        guard isOn, let code = UserDefaults.standard.string(forKey: "demoScan"), !code.isEmpty else { return nil }
+        return code
     }
 
     static var newBlockAfter: TimeInterval? {

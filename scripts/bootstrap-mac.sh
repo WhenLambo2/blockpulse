@@ -17,13 +17,11 @@ fi
 xcodegen --version
 
 step "Signing team"
-if [[ ! -f Config/Local.xcconfig ]]; then
-  read -r -p "Apple Developer Team ID (10 chars, Xcode → Settings → Accounts): " TEAM
-  [[ "$TEAM" =~ ^[A-Z0-9]{10}$ ]] || { echo "Team ID looks wrong: $TEAM"; exit 1; }
-  printf 'DEVELOPMENT_TEAM = %s\n' "$TEAM" > Config/Local.xcconfig
-  echo "Wrote Config/Local.xcconfig"
+if [[ -f Config/Local.xcconfig ]]; then
+  echo "Config/Local.xcconfig overrides the Arterion team: $(grep DEVELOPMENT_TEAM Config/Local.xcconfig || true)"
+  echo "Delete it to sign with Arterion (NNVBJ33M7Q)."
 else
-  echo "Using existing Config/Local.xcconfig"
+  echo "Signing with the Arterion team from Config/Base.xcconfig"
 fi
 
 step "Generating Blockpulse.xcodeproj"

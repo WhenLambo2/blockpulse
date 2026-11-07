@@ -1,6 +1,6 @@
 name: Blockpulse
 options:
-  bundleIdPrefix: com.lazet
+  bundleIdPrefix: nl.arterion
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
@@ -47,10 +47,10 @@ targets:
     entitlements:
       path: App/Blockpulse.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.lazet.blockpulse]
+        com.apple.security.application-groups: [group.nl.arterion.blockpulse]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lazet.blockpulse
+        PRODUCT_BUNDLE_IDENTIFIER: nl.arterion.blockpulse
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
   # Scripted Simulator takes for the launch film (scripts/mac-capture.sh). Not built by the app scheme.
@@ -63,7 +63,7 @@ targets:
       - target: Blockpulse
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lazet.blockpulse.capture
+        PRODUCT_BUNDLE_IDENTIFIER: nl.arterion.blockpulse.capture
         GENERATE_INFOPLIST_FILE: YES
   BlockpulseWidgets:
     type: app-extension
@@ -85,10 +85,10 @@ targets:
     entitlements:
       path: Widgets/BlockpulseWidgets.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.lazet.blockpulse]
+        com.apple.security.application-groups: [group.nl.arterion.blockpulse]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lazet.blockpulse.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: nl.arterion.blockpulse.widgets
 schemes:
   Blockpulse:
     build:

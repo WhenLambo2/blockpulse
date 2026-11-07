@@ -33,6 +33,7 @@ Check these on the first Xcode build:
 - [ ] Widget gallery (`context.isPreview`) shows sample data; a freshly added widget with no cache shows real data after its first fetch, or "No data yet" offline — never the sample prices.
 - [ ] `snapshot(for:in:)` without cache awaits a network load; confirm WidgetKit does not time out the snapshot on a slow network (10 s request timeout x 6 concurrent requests).
 - [ ] Lock Screen circular `.height` shows the full number (e.g. "971150"); check it scales legibly with `minimumScaleFactor(0.5)` and is not truncated.
+- [ ] Lock Screen rectangular (2026-11 layout): line 1 "₿ €73,541 ▲ 0.39%" fits on the smallest supported iPhone; with a long value (e.g. €100,541 ▼ 12.45%) the change drops to one decimal before anything shrinks, and the price is never truncated. Line 3 "▣ 5 min ago" ticks each minute between reloads and switches to "as of" when stale.
 - [ ] Partial refresh (one endpoint failing) shows the error banner in the app with live data; widgets keep the previous section and retry after 5 min.
 
 ## v2 redesign (2026-10-15)

@@ -1,7 +1,7 @@
 import Foundation
 
 public enum AppGroup {
-    public static let identifier = "group.com.lazet.blockpulse"
+    public static let identifier = "group.nl.arterion.blockpulse"
 }
 
 /// Last good snapshot as JSON on disk (App Group container on iOS).

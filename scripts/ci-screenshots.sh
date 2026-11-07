@@ -3,7 +3,7 @@
 # Usage: scripts/ci-screenshots.sh path/to/Blockpulse.app out-dir
 # SIM_NAME="iPhone 17 Pro Max" picks a specific simulator (newest iOS runtime wins); default: an iPhone Pro.
 set -euo pipefail
-APP="$1"; OUT="$2"; BUNDLE=com.lazet.blockpulse
+APP="$1"; OUT="$2"; BUNDLE=nl.arterion.blockpulse
 mkdir -p "$OUT"
 
 UDID=$(xcrun simctl list devices available -j | SIM_NAME="${SIM_NAME:-}" python3 -c '

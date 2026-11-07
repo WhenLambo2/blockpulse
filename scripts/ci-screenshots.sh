@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boots an iPhone simulator, installs the built app and screenshots all three tabs (dark and light).
+# Boots an iPhone simulator, installs the built app and screenshots every tab (dark and light).
 # Usage: scripts/ci-screenshots.sh path/to/Blockpulse.app out-dir
 # SIM_NAME="iPhone 17 Pro Max" picks a specific simulator (newest iOS runtime wins); default: an iPhone Pro.
 set -euo pipefail
@@ -43,6 +43,8 @@ shot 11-block-dark     -selectedTab explore  -appearance dark -openLink blockpul
 shot 12-address-dark   -selectedTab explore  -appearance dark -openLink blockpulse://address/bc1qm34lsc65zpw79lxes69zkqmk6ee3ewf0j77s3h
 shot 6-home-light      -selectedTab pulse    -appearance light -feeTilesShowFiat YES
 shot 7-market-light    -selectedTab charts   -appearance light -chartsCategory market
+shot 13-explore-light  -selectedTab explore  -appearance light
+shot 14-charts-light   -selectedTab charts   -appearance light -chartsCategory favourites
 shot 8-celebrate-dark  -selectedTab pulse    -appearance dark -celebrateAfter 18.0
 
 # A crash leaves no process behind; fail loudly instead of shipping blank screenshots.

@@ -31,9 +31,10 @@ struct SnapshotProvider<Intent: SnapshotWidgetIntent>: AppIntentTimelineProvider
         let result = await service.load()
         let now = Date()
         let currency = configuration.currencyOption.resolve(default: settings.currency)
-        let entries = RefreshPolicy.entryDates(now: now, fetchedAt: result.snapshot?.fetchedAt).map {
+        let reload = RefreshPolicy.nextReload(for: result, now: now)
+        let entries = RefreshPolicy.entryDates(now: now, fetchedAt: result.snapshot?.fetchedAt, until: reload).map {
             SnapshotEntry(date: $0, snapshot: result.snapshot, source: result.source, currency: currency, metric: configuration.lockMetric)
         }
-        return Timeline(entries: entries, policy: .after(RefreshPolicy.nextReload(for: result, now: now)))
+        return Timeline(entries: entries, policy: .after(reload))
     }
 }

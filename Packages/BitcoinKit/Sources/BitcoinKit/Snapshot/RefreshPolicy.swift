@@ -23,4 +23,16 @@ public enum RefreshPolicy {
         let staleAt = fetchedAt.addingTimeInterval(staleThreshold + 1)
         return staleAt > now ? [now, staleAt] : [now]
     }
+
+    /// `entryDates` plus one entry per minute until `until` (at most 30), so minute-based
+    /// labels such as "5 min ago" on the Lock Screen stay current between reloads.
+    public static func entryDates(now: Date, fetchedAt: Date?, until: Date) -> [Date] {
+        var dates = Set(entryDates(now: now, fetchedAt: fetchedAt))
+        var next = now.addingTimeInterval(60)
+        while next < until && dates.count < 32 {
+            dates.insert(next)
+            next = next.addingTimeInterval(60)
+        }
+        return dates.sorted()
+    }
 }

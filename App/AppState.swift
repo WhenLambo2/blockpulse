@@ -2,7 +2,7 @@ import SwiftUI
 import Observation
 import BitcoinKit
 
-/// State shared by the three tabs, so a change in Settings shows up in Charts and on the home screen at once.
+/// State shared by the tabs, so a change in Settings shows up in Charts and on the home screen at once.
 @MainActor
 @Observable
 final class AppState {
@@ -19,6 +19,12 @@ final class AppState {
 
     /// Bumps when the data source changes, so screens reload from the new instance.
     private(set) var dataSourceVersion = 0
+
+    /// The Explore tab's navigation stack, so other tabs and links can open a block or transaction there.
+    var explorePath: [ExploreRoute] = []
+
+    /// Set to switch tabs from code (a tapped block on another tab, a deep link); the app clears it.
+    var requestedTab: String?
 
     private var tabTaps: [Date] = []
 
@@ -43,4 +49,10 @@ final class AppState {
     }
 
     func celebrate() { celebration += 1 }
+
+    /// Shows `route` on the Explore tab, on top of the tab's root.
+    func open(_ route: ExploreRoute) {
+        explorePath = [route]
+        requestedTab = "explore"
+    }
 }

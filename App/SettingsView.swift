@@ -9,6 +9,8 @@ struct SettingsView: View {
     private var currencyRaw = Currency.eur.rawValue
     @AppStorage(AppPreferences.Keys.appearance) private var appearanceRaw = Appearance.dark.rawValue
     @AppStorage(AppPreferences.Keys.feeTilesShowFiat) private var feeTilesShowFiat = false
+    @AppStorage(AppPreferences.Keys.remembersSearches) private var remembersSearches = true
+    @State private var clearedSearches = false
 
     private var currency: Currency { Currency(rawValue: currencyRaw) ?? .eur }
 
@@ -49,6 +51,21 @@ struct SettingsView: View {
                         Text("Home and charts")
                     } footer: {
                         Text("You can also hold and drag a card on the home screen, or tap the star on a chart.")
+                    }
+                    Section {
+                        Toggle("Remember recent searches", isOn: $remembersSearches)
+                        Button(clearedSearches ? "Recent searches cleared" : "Clear recent searches") {
+                            AppPreferences().recentSearches = []
+                            clearedSearches = true
+                        }
+                        .disabled(clearedSearches || !remembersSearches)
+                    } header: {
+                        Text("Explore")
+                    } footer: {
+                        Text("Recent searches stay on this iPhone. Searches and scans go only to the data source below.")
+                    }
+                    .onChange(of: remembersSearches) { _, on in
+                        if !on { AppPreferences().recentSearches = [] }
                     }
                     DataSourceSection()
                     Section("About") {

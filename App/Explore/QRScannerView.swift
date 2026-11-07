@@ -19,7 +19,7 @@ struct QRScannerSheet: View {
     @State private var readingPhoto = false
     @State private var photoFailed = false
 
-    enum CameraState { case checking, ready, denied, unsupported }
+    enum CameraState { case checking, ready, demo, denied, unsupported }
 
     /// Side of the frame drawn on screen; the camera reads a slightly larger square around it.
     static let frameSize: CGFloat = 240
@@ -37,6 +37,11 @@ struct QRScannerSheet: View {
                     if scanned == nil { scanned = code }
                 }
                 .ignoresSafeArea()
+            case .demo:
+                DemoScanView(code: DemoMode.scanCode ?? "") { code in
+                    if scanned == nil { scanned = code }
+                }
+                .ignoresSafeArea()
             case .checking:
                 ProgressView().tint(.white)
             case .denied:
@@ -45,7 +50,7 @@ struct QRScannerSheet: View {
             case .unsupported:
                 cameraMessage("Scanning isn't available on this device", "Pick a photo with a QR code instead.")
             }
-            if camera == .ready && scanned == nil { reticle }
+            if (camera == .ready || camera == .demo) && scanned == nil { reticle }
             VStack {
                 topBar
                 Spacer()
@@ -136,7 +141,7 @@ struct QRScannerSheet: View {
                 .foregroundStyle(.white)
                 .padding(12)
                 .background(Theme.card, in: Capsule())
-        } else if camera == .ready {
+        } else if camera == .ready || camera == .demo {
             Text("Point at a QR code with an address, transaction or payment link.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.8))
@@ -179,6 +184,7 @@ struct QRScannerSheet: View {
 
     /// Asks for the camera the first time.
     private static func prepareCamera() async -> CameraState {
+        if DemoMode.scanCode != nil { return .demo }
         guard AVCaptureDevice.default(for: .video) != nil else { return .unsupported }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized: return .ready
@@ -330,6 +336,40 @@ private final class CaptureBox: @unchecked Sendable {
             if device.isAutoFocusRangeRestrictionSupported { device.autoFocusRangeRestriction = .near }
             if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
             device.unlockForConfiguration()
+        }
+    }
+}
+
+/// Marketing captures only (`-demoScan <code>`): the Simulator has no camera, so a printed QR code
+/// slides into the frame and is "read" once it settles.
+private struct DemoScanView: View {
+    let code: String
+    let onScan: (String) -> Void
+    @State private var settled = false
+
+    var body: some View {
+        ZStack {
+            RadialGradient(colors: [Color(white: 0.2), Color(white: 0.05)], center: .center, startRadius: 40, endRadius: 520)
+            if let qr = QRCodeImage.make(code) {
+                Image(uiImage: qr)
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 180, height: 180)
+                    .padding(22)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
+                    .rotation3DEffect(.degrees(settled ? 0 : 18), axis: (x: 1, y: -0.6, z: 0))
+                    .rotationEffect(.degrees(settled ? -2 : -12))
+                    .scaleEffect(settled ? 1 : 0.8)
+                    .offset(x: settled ? 0 : 90, y: settled ? 0 : 260)
+                    .blur(radius: settled ? 0 : 1.5)
+            }
+        }
+        .task {
+            try? await Task.sleep(for: .seconds(0.6))
+            withAnimation(.smooth(duration: 1.4)) { settled = true }
+            try? await Task.sleep(for: .seconds(1.9))
+            onScan(code)
         }
     }
 }

@@ -7,7 +7,9 @@ import Testing
 struct LiveSmokeTests {
     static func client() -> MempoolClient {
         let base = ProcessInfo.processInfo.environment["BLOCKPULSE_BASE"].flatMap(AppSettings.validatedBaseURL)
-        return MempoolClient(baseURL: base ?? MempoolClient.defaultBaseURL)
+        // 30 s, not the app's 10 s: this checks the endpoints work, and mempool.space's heavier
+        // address calls sometimes take longer from CI runners.
+        return MempoolClient(baseURL: base ?? MempoolClient.defaultBaseURL, timeout: 30)
     }
 
     /// Every chart in every period it offers (live-only charts once).

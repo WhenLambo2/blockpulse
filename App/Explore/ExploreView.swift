@@ -1,8 +1,8 @@
 import SwiftUI
 import BitcoinKit
 
-/// Explore tab: search like mempool.space (block height or hash, transaction, address, date), a QR
-/// scanner, the live strip of pending and mined blocks, and a mempool overview below it.
+/// Search tab: look up a block height or hash, transaction, address or date, a QR scanner,
+/// the pulse line of mined and upcoming blocks, and a mempool overview below it.
 struct ExploreView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.scenePhase) private var scenePhase
@@ -338,43 +338,37 @@ extension ExploreRoute {
     var isBlock: Bool { if case .block = self { true } else { false } }
 }
 
-/// Pending blocks on the left, mined blocks on the right, split by a dashed line, like mempool.space.
-/// It opens centred on the line.
+/// The pulse line: time runs left to right. Mined blocks are solid cubes on the left, a heartbeat
+/// marks "now" with the time since the last block, and the blocks still to come are outlined cubes
+/// on the right that glow brighter as fees rise. It opens centred on the heartbeat.
 struct BlockStrip: View {
     let projected: [ProjectedBlock]
     let blocks: [Block]
     private static let now = "now"
-    @ScaledMetric(relativeTo: .subheadline) private var cubeHeight: CGFloat = 104
     /// While the strip is being dragged or is still gliding, a new block doesn't pull it back to "now".
     @State private var scrolling = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                SectionLabel("Pending")
-                Spacer()
-                SectionLabel("Mined").fixedSize()
-            }
+            SectionLabel("Blocks")
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 8) {
-                        ForEach(Array(projected.prefix(8).enumerated()).reversed(), id: \.offset) { index, block in
+                    HStack(alignment: .top, spacing: 4) {
+                        if !blocks.isEmpty {
+                            NavigationLink(value: ExploreRoute.latestBlocks) { AllBlocksTile() }
+                                .buttonStyle(.plain)
+                        }
+                        ForEach(blocks.reversed()) { block in
+                            NavigationLink(value: ExploreRoute.block(.hash(block.id))) { MinedCube(block: block) }
+                                .buttonStyle(.plain)
+                        }
+                        NowBeat(lastBlock: blocks.first)
+                            .id(Self.now)
+                        ForEach(Array(projected.prefix(8).enumerated()), id: \.offset) { index, block in
                             NavigationLink(value: ExploreRoute.pendingBlock(index)) {
                                 PendingCube(block: block, index: index)
                             }
                             .buttonStyle(.plain)
-                        }
-                        Line()
-                            .stroke(Theme.orange.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
-                            .frame(width: 2, height: cubeHeight)
-                            .id(Self.now)
-                        ForEach(blocks) { block in
-                            NavigationLink(value: ExploreRoute.block(.hash(block.id))) { MinedCube(block: block) }
-                                .buttonStyle(.plain)
-                        }
-                        if !blocks.isEmpty {
-                            NavigationLink(value: ExploreRoute.latestBlocks) { AllBlocksTile() }
-                                .buttonStyle(.plain)
                         }
                     }
                     .padding(.vertical, 2)
@@ -395,95 +389,136 @@ struct BlockStrip: View {
         }
         .card()
     }
+}
 
-    private struct Line: Shape {
-        func path(in rect: CGRect) -> Path {
-            Path { p in
-                p.move(to: CGPoint(x: rect.midX, y: rect.minY))
-                p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+/// Size of a cube in the pulse line, and the width of each slot under it.
+private enum StripMetrics {
+    static let cube: CGFloat = 38
+    static let slot: CGFloat = 66
+}
+
+/// "Now" in the pulse line: the heartbeat from the logo and the time since the last block.
+struct NowBeat: View {
+    let lastBlock: Block?
+    @ScaledMetric(relativeTo: .caption2) private var slot: CGFloat = StripMetrics.slot
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HeartbeatShape()
+                .stroke(Theme.orange, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .frame(width: slot, height: StripMetrics.cube * 1.08)
+            Text("now").font(.number(.caption, weight: .bold)).foregroundStyle(Theme.orange)
+            if let lastBlock {
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    Text(Self.sinceText(lastBlock, now: context.date))
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
             }
         }
+        .frame(width: slot)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(lastBlock.map { "Now. \(Self.sinceText($0, now: .now)) since the last block" } ?? "Now")
+    }
+
+    private static func sinceText(_ block: Block, now: Date) -> String {
+        let minutes = max(0, Int(now.timeIntervalSince1970 - TimeInterval(block.timestamp)) / 60)
+        return "\(minutes) min"
     }
 }
 
-/// A projected block: brighter orange for higher fees, dark text on it.
+/// A block still to come: an outlined cube, filled brighter for higher fees.
 struct PendingCube: View {
     let block: ProjectedBlock
     let index: Int
-    @ScaledMetric(relativeTo: .subheadline) private var width: CGFloat = 96
-    @ScaledMetric(relativeTo: .subheadline) private var height: CGFloat = 104
+    @ScaledMetric(relativeTo: .caption2) private var slot: CGFloat = StripMetrics.slot
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("~\(PendingPosition.minutes(index: index)) min").font(.caption2.weight(.medium)).opacity(0.75)
-            Text(Format.feeRate(block.medianFee)).font(.number(.subheadline, weight: .bold))
-            Text("\(Format.feeRateNumber(block.minFee))–\(Format.feeRateNumber(block.maxFee)) sat/vB")
-                .font(.number(.caption2, weight: .regular)).opacity(0.75)
+        let intensity = Theme.feeIntensity(block.medianFee)
+        VStack(spacing: 4) {
+            OutlineCube(intensity: intensity, size: StripMetrics.cube)
+            Text(Format.feeRate(block.medianFee))
+                .font(.number(.caption, weight: .bold))
                 .lineLimit(1).minimumScaleFactor(0.7)
-            Spacer(minLength: 0)
-            Text("\(Format.grouped(Double(block.nTx))) tx").font(.number(.caption2, weight: .regular)).opacity(0.75)
+            Text("~\(PendingPosition.minutes(index: index)) min")
+                .font(.caption2).foregroundStyle(.secondary)
+                .lineLimit(1)
         }
-        .foregroundStyle(Color(hex: 0x1A1206))
-        .padding(9)
-        .frame(width: width, height: height, alignment: .leading)
-        .background(
-            // A solid base keeps the dark text readable on the cheapest (faintest) blocks.
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Theme.orangeDeep.opacity(0.85))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(LinearGradient(colors: [Theme.orange, Theme.orangeMid], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .opacity(Theme.feeIntensity(block.medianFee))
-                )
-        )
+        .frame(width: slot)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(index == 0 ? "Next block" : "Pending block \(index + 1)")
         .accessibilityValue("\(Format.feeRate(block.medianFee)), \(block.nTx) transactions")
     }
 }
 
+/// A mined block: the solid logo cube, its height and how long ago it was found.
 struct MinedCube: View {
     let block: Block
-    @ScaledMetric(relativeTo: .subheadline) private var width: CGFloat = 96
-    @ScaledMetric(relativeTo: .subheadline) private var height: CGFloat = 104
+    @ScaledMetric(relativeTo: .caption2) private var slot: CGFloat = StripMetrics.slot
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(spacing: 4) {
+            BlockCube(size: StripMetrics.cube)
             Text(Format.grouped(Double(block.height)))
-                .font(.number(.subheadline, weight: .bold))
+                .font(.number(.caption, weight: .bold))
                 .foregroundStyle(Theme.orange)
+                .lineLimit(1).minimumScaleFactor(0.7)
             Text(Date(timeIntervalSince1970: TimeInterval(block.timestamp)), format: .relative(presentation: .named, unitsStyle: .abbreviated))
                 .font(.caption2).foregroundStyle(.secondary)
-                .lineLimit(1).minimumScaleFactor(0.8)
-            Text("\(Format.grouped(Double(block.txCount))) tx").font(.number(.caption2, weight: .regular))
-            Spacer(minLength: 0)
-            Text(block.extras?.pool?.name ?? "Unknown")
-                .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                .lineLimit(1).minimumScaleFactor(0.7)
         }
-        .padding(9)
-        .frame(width: width, height: height, alignment: .leading)
-        .background(Theme.cardRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.border))
+        .frame(width: slot)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Block \(block.height)")
+        .accessibilityValue("\(block.txCount) transactions, \(block.extras?.pool?.name ?? "unknown pool")")
     }
 }
 
-/// The end of the strip: opens the full block list.
-struct AllBlocksTile: View {
-    @ScaledMetric(relativeTo: .subheadline) private var height: CGFloat = 104
+/// The logo cube drawn as an outline, for blocks that are not mined yet.
+struct OutlineCube: View {
+    var intensity: Double = 1
+    var size: CGFloat = 38
 
+    var body: some View {
+        Canvas { context, canvas in
+            let inset: CGFloat = 1
+            let w = canvas.width - inset * 2, h = canvas.height - inset * 2
+            func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: inset + w * x, y: inset + h * y) }
+            let outline = Path { p in
+                p.move(to: pt(0.5, 0))
+                p.addLine(to: pt(1, 0.25))
+                p.addLine(to: pt(1, 0.75))
+                p.addLine(to: pt(0.5, 1))
+                p.addLine(to: pt(0, 0.75))
+                p.addLine(to: pt(0, 0.25))
+                p.closeSubpath()
+            }
+            let edges = Path { p in
+                p.move(to: pt(0, 0.25)); p.addLine(to: pt(0.5, 0.5)); p.addLine(to: pt(1, 0.25))
+                p.move(to: pt(0.5, 0.5)); p.addLine(to: pt(0.5, 1))
+            }
+            context.fill(outline, with: .color(Theme.orange.opacity(0.08 + 0.3 * intensity)))
+            let stroke = StrokeStyle(lineWidth: 1.5, lineJoin: .round)
+            context.stroke(outline, with: .color(Theme.orange.opacity(0.35 + 0.65 * intensity)), style: stroke)
+            context.stroke(edges, with: .color(Theme.orange.opacity(0.35 + 0.65 * intensity)), style: stroke)
+        }
+        .frame(width: size, height: size * 1.08)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The start of the strip: opens the full block list.
+struct AllBlocksTile: View {
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: "square.stack.3d.up").font(.title3)
             Text("All blocks").font(.caption.weight(.semibold)).multilineTextAlignment(.center)
         }
         .foregroundStyle(Theme.orange)
-        .frame(width: 76, height: height)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Theme.orange.opacity(0.55), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
-        )
+        .frame(width: 70, height: StripMetrics.cube * 1.08 + 36)
+        .background(Theme.cardRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)

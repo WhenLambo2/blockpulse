@@ -60,7 +60,7 @@ struct SettingsView: View {
                         }
                         .disabled(clearedSearches || !remembersSearches)
                     } header: {
-                        Text("Explore")
+                        Text("Search")
                     } footer: {
                         Text("Recent searches stay on this iPhone. Searches and scans go only to the data source below.")
                     }

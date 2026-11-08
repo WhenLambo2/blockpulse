@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import BitcoinKit
 
-/// Everything the Explore tab shows under the search bar: pending and mined blocks, the state of the
+/// Everything the Search tab shows under the search bar: pending and mined blocks, the state of the
 /// mempool and the latest transactions entering it. Refreshes only while the tab's overview is on screen.
 @MainActor
 @Observable

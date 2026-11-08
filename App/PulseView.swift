@@ -299,7 +299,7 @@ struct PulseView: View {
                         }
                         .padding(.vertical, 2)
                     }
-                    Text("Projected blocks, median sat/vB. Brighter means pricier. Tap one to explore it.")
+                    Text("Projected blocks, median sat/vB. Brighter means pricier. Tap one to open it.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

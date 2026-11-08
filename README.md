@@ -5,7 +5,7 @@ Data: public `https://mempool.space` by default (no API key). Settings can switc
 
 ## Layout
 - `Packages/BitcoinKit`: API client, models, snapshot cache, formatting, settings. Pure Foundation, tested on Linux and macOS.
-- `App/`: SwiftUI app. Three tabs: **Blockpulse** (block header with heartbeat, then foldable cards you can reorder: fees, mempool, difficulty, halving, recent blocks), **Charts** (categories, favourites, vertical paging, Swift Charts; tables only where they help) and **Settings** (appearance, currency, fee tiles, card order, favourites, data source). Logo palette in `App/Theme.swift`; dark by default, light/system in Settings.
+- `App/`: SwiftUI app. Four tabs: **Blockpulse** (block header with heartbeat, then foldable cards you can reorder: fees, mempool, difficulty, halving, recent blocks), **Search** (look up a block, transaction, address or date, scan a QR code, the pulse line of mined and upcoming blocks, mempool overview), **Charts** (categories, favourites, vertical paging, Swift Charts; tables only where they help) and **Settings** (appearance, currency, fee tiles, card order, favourites, data source). Logo palette in `App/Theme.swift`; dark by default, light/system in Settings.
 - `Widgets/`: WidgetKit extension (Home Screen S/M/L, Lock Screen, StandBy).
 - `project.yml`: XcodeGen spec. The `.xcodeproj` is generated and never committed.
 

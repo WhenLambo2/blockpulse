@@ -437,9 +437,9 @@ struct PendingCube: View {
         let intensity = Theme.feeIntensity(block.medianFee)
         VStack(spacing: 4) {
             OutlineCube(intensity: intensity, size: StripMetrics.cube)
-            Text(Format.feeRate(block.medianFee))
-                .font(.number(.caption, weight: .bold))
-                .lineLimit(1).minimumScaleFactor(0.7)
+            // Number bold, unit small, so "0.12 sat/vB" fits the slot without being cut off.
+            Text("\(Text(Format.feeRateNumber(block.medianFee)).font(.number(.caption, weight: .bold))) \(Text("sat/vB").font(.caption2).foregroundStyle(.secondary))")
+                .lineLimit(1).minimumScaleFactor(0.6)
             Text("~\(PendingPosition.minutes(index: index)) min")
                 .font(.caption2).foregroundStyle(.secondary)
                 .lineLimit(1)

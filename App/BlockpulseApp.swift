@@ -35,7 +35,7 @@ struct BlockpulseApp: App {
                     .tabItem { Label("Blockpulse", systemImage: "waveform.path.ecg") }
                     .tag("pulse")
                 ExploreView()
-                    .tabItem { Label("Explore", systemImage: "magnifyingglass") }
+                    .tabItem { Label("Search", systemImage: "magnifyingglass") }
                     .tag("explore")
                 ChartsView()
                     .tabItem { Label("Charts", systemImage: "chart.xyaxis.line") }
@@ -50,7 +50,7 @@ struct BlockpulseApp: App {
             // preferredColorScheme(nil) doesn't hand control back to the system once a fixed
             // scheme was set, so the window's style is set directly as well.
             .onAppear { applyToWindows(appearance) }
-            // blockpulse://tx/…, /block/…, /address/… open on the Explore tab.
+            // blockpulse://tx/…, /block/…, /address/… open on the Search tab.
             .onOpenURL { url in
                 if let route = ExploreRoute(url: url) { appState.open(route) }
             }

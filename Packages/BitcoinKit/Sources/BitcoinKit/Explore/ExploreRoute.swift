@@ -8,7 +8,7 @@ public enum BlockRef: Hashable, Sendable {
     case timestamp(Int)
 }
 
-/// A page in the Explore tab. Also the shape of deep links (`blockpulse://tx/…`) and the
+/// A page in the Search tab. Also the shape of deep links (`blockpulse://tx/…`) and the
 /// mempool.space links that can be pasted or scanned.
 public enum ExploreRoute: Hashable, Sendable {
     case transaction(String, output: Int?)

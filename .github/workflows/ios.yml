@@ -12,6 +12,9 @@ on:
 jobs:
   simulator:
     runs-on: macos-15
+    # Write access only so manual runs can publish full-size screenshots to their own branch.
+    permissions:
+      contents: write
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -48,11 +51,30 @@ jobs:
         run: |
           SIM_NAME="$(xcrun simctl list devices available | grep -o 'iPhone [0-9]* Pro Max' | sort -V | tail -1)" scripts/mac-capture.sh captures
           ls -la captures
-      # Screenshots take most of the run (8 launches of 20 s plus simulator boot), so they only run
+      # Screenshots take most of the run (14 launches of 20 s plus simulator boot), so they only run
       # when asked: Actions → iOS app → Run workflow. Pushes and PRs just build and run the live check.
       - name: Simulator screenshots (manual runs, not capture runs)
         if: github.event_name == 'workflow_dispatch' && !inputs.capture
-        run: scripts/ci-screenshots.sh build/dd/Build/Products/Debug-iphonesimulator/Blockpulse.app screenshots
+        # Pro Max: 1320 x 2868, the 6.9" size App Store Connect asks for.
+        run: |
+          SIM_NAME="$(xcrun simctl list devices available | grep -o 'iPhone [0-9]* Pro Max' | sort -V | tail -1)" \
+            scripts/ci-screenshots.sh build/dd/Build/Products/Debug-iphonesimulator/Blockpulse.app screenshots
+      # Manual runs also push the full-size PNGs to a throwaway branch screenshots/run-<id>, so tools
+      # that can't download artifacts can fetch them with git. Delete the branch once copied.
+      - name: Publish screenshots to a branch (manual runs)
+        if: github.event_name == 'workflow_dispatch' && !inputs.capture
+        run: |
+          ls screenshots/*.png >/dev/null 2>&1 || exit 0
+          out=$(mktemp -d)
+          cp screenshots/*.png "$out/"
+          cd "$out"
+          git init -q -b main
+          git add .
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Simulator screenshots from run ${{ github.run_id }} (${{ github.sha }})"
+          git push -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            "HEAD:refs/heads/screenshots/run-${{ github.run_id }}"
+          echo "Pushed screenshots/run-${{ github.run_id }}"
       - name: Live API check (mempool.space, every chart and period)
         if: always()
         run: BLOCKPULSE_LIVE=1 swift test --package-path Packages/BitcoinKit --filter LiveSmokeTests

@@ -82,8 +82,8 @@ CI builds it and the live check hits every Explore endpoint; these need a real i
 - [ ] QR scanner: first tap asks for the camera, a QR code with an address, txid or `bitcoin:` link shows the found card and opens the page; "Scan again" picks up the same code again; "From photo" reads a screenshot of a QR code.
 - [ ] QR sheet: "Save to Photos" asks for add-only photo access once and saves the card image; "Share QR" offers Save Image and AirDrop; the code scans back from another phone's camera (transaction codes open mempool.space).
 - [ ] Search: typing a partial `bc1q…` shows suggestions after a short pause; Return opens the top row; the paste button pastes without a permission alert.
-- [ ] Block strip opens centred on the dashed line; tapping a Recent blocks card on Blockpulse or a block in Charts switches to Explore with that block open.
-- [ ] `blockpulse://block/840000` opened from Safari or Notes lands on that block in Explore.
+- [ ] Pulse line opens centred on the heartbeat ("now"); tapping a Recent blocks card on Blockpulse or a block in Charts switches to Search with that block open.
+- [ ] `blockpulse://block/840000` opened from Safari or Notes lands on that block in Search.
 
 ## v3.1 Explore polish (2026-10-17)
 
@@ -94,7 +94,15 @@ Time these once in a Release build (Edit Scheme → Run → Build Configuration:
 - [ ] Share buttons (address, transaction, block, QR sheet): the share sheet appears in under 0.5 s with the Blockpulse icon and title, and Messages/Mail get the mempool.space link.
 - [ ] From photo: a 48 MP photo with a QR code reads in about a second without freezing; picking the same photo twice works.
 - [ ] Explore overview: Mempool card (count, vMB ≈ blocks, sat/vB to get in, fee bands), Incoming chart with the dashed block-capacity line, Latest transactions updating every 10 s. Nothing refreshes while a detail page is open (check the network log).
-- [ ] "All blocks" tile at the end of the mined side opens the endless list; airplane mode at the end shows "Couldn't load more · Retry".
+- [ ] "All blocks" tile at the start of the strip (far left, before the oldest mined block) opens the endless list; airplane mode at the end shows "Couldn't load more · Retry".
 - [ ] Block page: tapping the arrows quickly walks several blocks, dims the old one while loading, and never shows "Couldn't load this block". Back from a transaction keeps the extra pages and scroll position.
 - [ ] Batch transaction with thousands of outputs: "Show 200 more" stays smooth.
 - [ ] Pending cubes readable at the lowest fee; cubes grow with large Dynamic Type.
+
+## Pulse line and Search tab (2026-11-08)
+
+Asked by the mempool.space team: the blocks graphic must not look like theirs (no square tiles, no dashed divider) and no "explore" wording.
+
+- [ ] Search tab (was Explore): tab bar and Settings section header say "Search".
+- [ ] Pulse line: mined blocks are solid cubes on the left, oldest first; the heartbeat with "now" and minutes since the last block sits in the middle; outlined pending cubes on the right get brighter with higher fees. A new block slides the strip back to "now" unless you are scrolling.
+- [ ] Labels fit at the largest Dynamic Type sizes, dark and light.

@@ -7,7 +7,9 @@ import Testing
 struct LiveSmokeTests {
     static func client() -> MempoolClient {
         let base = ProcessInfo.processInfo.environment["BLOCKPULSE_BASE"].flatMap(AppSettings.validatedBaseURL)
-        return MempoolClient(baseURL: base ?? MempoolClient.defaultBaseURL)
+        // 30 s, not the app's 10 s: this checks the endpoints work, and mempool.space's heavier
+        // address calls sometimes take longer from CI runners.
+        return MempoolClient(baseURL: base ?? MempoolClient.defaultBaseURL, timeout: 30)
     }
 
     /// Every chart in every period it offers (live-only charts once).
@@ -43,44 +45,53 @@ struct LiveSmokeTests {
     }
 
     /// Every Explore endpoint against real data: the genesis block, a famous early transaction, a busy address.
+    /// Each call is named, so a failure says which endpoint broke.
     @Test func exploreEndpoints() async throws {
         let c = Self.client()
-        let tip = try await c.tipHeight()
+        let tip = try await step("tip height") { try await c.tipHeight() }
         #expect(tip > 900_000)
-        let genesis = try await c.blockHash(height: 0)
+        let genesis = try await step("block hash 0") { try await c.blockHash(height: 0) }
         #expect(genesis == "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f")
-        let block = try await c.block(genesis)
+        let block = try await step("genesis block") { try await c.block(genesis) }
         #expect(block.height == 0)
-        let latest = try await c.block(c.blockHash(height: tip))
+        let latest = try await step("latest block") { try await c.block(c.blockHash(height: tip)) }
         #expect(latest.extras?.pool != nil)
-        let txs = try await c.blockTransactions(latest.id, start: 0)
+        let txs = try await step("block transactions") { try await c.blockTransactions(latest.id, start: 0) }
         #expect(txs.count == min(25, latest.txCount))
         #expect(txs.first?.isCoinbase == true)
-        let older = try await c.blocks(endingAt: tip - 15)
+        let older = try await step("older blocks") { try await c.blocks(endingAt: tip - 15) }
         #expect(older.first?.height == tip - 15)
-        #expect(try await c.blockAt(timestamp: 1_231_006_505).height == 0)
+        #expect(try await step("block at timestamp") { try await c.blockAt(timestamp: 1_231_006_505) }.height == 0)
 
         // Block 170: the first payment, from Satoshi to Hal Finney.
         let first = "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16"
-        let tx = try await c.transaction(first)
+        let tx = try await step("transaction") { try await c.transaction(first) }
         #expect(tx.status.blockHeight == 170)
-        #expect(try await c.outspends(first).count == tx.vout.count)
-        _ = try await c.cpfp(first)
-        _ = try await c.rbf(first)
+        #expect(try await step("outspends") { try await c.outspends(first) }.count == tx.vout.count)
+        _ = try await step("cpfp") { try await c.cpfp(first) }
+        _ = try await step("rbf") { try await c.rbf(first) }
 
         let address = "bc1qm34lsc65zpw79lxes69zkqmk6ee3ewf0j77s3h"
-        let info = try await c.address(address)
+        let info = try await step("address") { try await c.address(address) }
         #expect(info.txCount > 0)
-        let page = try await c.addressTransactions(address)
+        let page = try await step("address transactions") { try await c.addressTransactions(address) }
         #expect(!page.isEmpty)
         if let last = page.last(where: { $0.status.confirmed }) {
-            _ = try await c.addressTransactions(address, after: last.txid)
+            _ = try await step("address transactions, next page") { try await c.addressTransactions(address, after: last.txid) }
         }
-        #expect(try await c.addressPrefix("bc1qm34lsc65").contains(address))
+        #expect(try await step("address prefix") { try await c.addressPrefix("bc1qm34lsc65") }.contains(address))
 
-        let backlog = try await c.mempoolBacklog()
+        let backlog = try await step("mempool backlog") { try await c.mempoolBacklog() }
         #expect(backlog.count > 0 && !backlog.feeHistogram.isEmpty)
-        #expect(!(try await c.recentMempoolTransactions()).isEmpty)
+        #expect(!(try await step("recent mempool transactions") { try await c.recentMempoolTransactions() }).isEmpty)
+    }
+
+    /// Runs one API call and, if it throws, records which one before passing the error on.
+    private func step<T>(_ name: String, _ call: () async throws -> T) async throws -> T {
+        do { return try await call() } catch {
+            Issue.record("\(name) failed: \(error)")
+            throw error
+        }
     }
 
     @Test func pulseExtras() async {

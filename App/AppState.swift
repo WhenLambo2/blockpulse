@@ -20,7 +20,7 @@ final class AppState {
     /// Bumps when the data source changes, so screens reload from the new instance.
     private(set) var dataSourceVersion = 0
 
-    /// The Explore tab's navigation stack, so other tabs and links can open a block or transaction there.
+    /// The Search tab's navigation stack (named explore in code), so other tabs and links can open a block or transaction there.
     var explorePath: [ExploreRoute] = []
 
     /// Set to switch tabs from code (a tapped block on another tab, a deep link); the app clears it.
@@ -50,7 +50,7 @@ final class AppState {
 
     func celebrate() { celebration += 1 }
 
-    /// Shows `route` on the Explore tab, on top of the tab's root.
+    /// Shows `route` on the Search tab, on top of the tab's root.
     func open(_ route: ExploreRoute) {
         explorePath = [route]
         requestedTab = "explore"

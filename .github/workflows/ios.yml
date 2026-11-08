@@ -55,7 +55,10 @@ jobs:
       # when asked: Actions → iOS app → Run workflow. Pushes and PRs just build and run the live check.
       - name: Simulator screenshots (manual runs, not capture runs)
         if: github.event_name == 'workflow_dispatch' && !inputs.capture
-        run: scripts/ci-screenshots.sh build/dd/Build/Products/Debug-iphonesimulator/Blockpulse.app screenshots
+        # Pro Max: 1320 x 2868, the 6.9" size App Store Connect asks for.
+        run: |
+          SIM_NAME="$(xcrun simctl list devices available | grep -o 'iPhone [0-9]* Pro Max' | sort -V | tail -1)" \
+            scripts/ci-screenshots.sh build/dd/Build/Products/Debug-iphonesimulator/Blockpulse.app screenshots
       # Manual runs also push the full-size PNGs to a throwaway branch screenshots/run-<id>, so tools
       # that can't download artifacts can fetch them with git. Delete the branch once copied.
       - name: Publish screenshots to a branch (manual runs)
